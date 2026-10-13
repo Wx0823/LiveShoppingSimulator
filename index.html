@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; media-src 'self'" />
+  <title>拆播间 · Live Shopping Simulator</title>
+  <link rel="stylesheet" href="src/style.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="#" aria-label="拆播间首页"><span class="brand-mark">▧</span></a>
+      <div class="side-nav">
+        <button class="nav-item active" id="nav-live"><span>◉</span>直播间</button>
+        <button class="nav-item" id="nav-bag"><span>▢</span>我的背包<i id="bag-count">0</i></button>
+        <button class="nav-item" id="nav-collection"><span>▦</span>收藏图鉴</button>
+      </div>
+      <div class="side-bottom"><span class="offline-dot"></span>单机模式<button class="nav-item" id="nav-settings"><span>⚙</span>设置</button><small>v0.1.0</small></div>
+    </aside>
+    <main>
+      <header class="topbar">
+        <div class="wordmark">拆播间<span>LIVE SHOPPING SIMULATOR</span></div>
+        <div class="top-actions"><span class="save-status" id="save-status">进度已保存</span><button class="wallet" id="wallet-help"><span class="coin">◆</span><b id="coins">1,200</b><small>金币</small></button><div class="profile">玩</div></div>
+      </header>
+      <div class="page-heading"><div><div class="eyebrow">YOUR LITTLE UNBOXING ESCAPE</div><h1>好东西，下一盒见<span>✳</span></h1></div><div class="session-meta"><span class="status-dot"></span> 正在直播 <span class="divider">/</span> 第 <b id="opened">0</b> 次惊喜</div></div>
+      <section class="live-layout">
+        <div class="stream-panel">
+          <div class="stream-top"><div class="host-avatar">小</div><div><strong>小桃的玩心收藏室 <span class="verified">✓</span></strong><small>把平凡的日子，拆出一点惊喜</small></div><span class="live-pill">● LIVE</span><span class="viewers">◉ 2,368</span></div>
+          <div class="stage" id="stage">
+            <div class="scene-backdrop"></div>
+            <div class="stage-shade"></div>
+            <div class="stage-label"><span>本场主题</span><strong id="stage-theme">街角漫游计划</strong></div>
+            <div class="float-tag">100% 好奇心 <span>✦</span></div>
+            <div class="host-bubble" id="host-line">欢迎光临！今天，想拆哪一盒？</div>
+            <div class="opening-label" id="opening-label" aria-live="polite"></div>
+            <div class="box-scene" id="box-scene"><div class="box-shadow"></div><div class="mystery-box" id="mystery-box"><div class="box-lid"></div><div class="box-face"><small>PLAY / CLUB</small><span>?</span><b>把惊喜带回家</b><div class="box-sticker">✳</div></div></div><div class="box-plinth"></div></div>
+            <div class="stage-caption"><span class="live-indicator">●</span> 你的专属开盒席位 <span class="caption-right">原创潮玩 · 陪伴每一份好奇</span></div>
+            <div class="stage-controls"><button id="sound-toggle" title="切换音效" aria-label="切换音效">♫</button><span>画质 · 心动</span><button id="fullscreen" title="全屏" aria-label="全屏">⛶</button></div>
+          </div>
+          <div class="stream-bottom"><div><span class="small-spark">✦</span><strong>每一件小玩意，都值得被喜欢。</strong><small>开出后，可折现或放进你的收藏。</small></div><button class="subtle-button" id="rules">玩法说明 ↗</button></div>
+        </div>
+        <aside class="chat-panel">
+          <div class="chat-heading"><h2>直播间聊天 <span>CHAT</span></h2><span class="chat-count">2.3k</span></div>
+          <div class="pinned"><span>♧</span><p><b>小桃的置顶</b>欢迎来玩！挑一盒喜欢的，让我帮你拆开。所有交易均使用游戏金币。</p></div>
+          <div class="chat-messages" id="chat-messages" aria-label="模拟直播弹幕"></div>
+          <div class="chat-compose"><button id="send-chat">和大家打个招呼…<span>↗</span></button><button class="heart-button" id="heart" aria-label="送出爱心">♡</button></div>
+          <div class="watch-reward"><div class="gift-icon">♧</div><div><strong>陪伴也有小惊喜</strong><small id="reward-status">再看 30 秒，领取 60 金币</small></div><button id="claim-reward" disabled>待领取</button><div class="reward-track"><div id="reward-progress"></div></div></div>
+        </aside>
+      </section>
+      <section class="shop-section"><div class="section-heading"><h2>今天拆点什么 <span>THE BLIND BOX EDIT</span></h2><button class="text-button" id="odds">概率公示 ↗</button></div><div class="shop-row"><div id="series-list" class="series-list"></div><div class="checkout"><div class="checkout-title"><span id="selected-label">街角漫游</span><span class="in-stock">● 现货</span></div><div class="checkout-price"><small>◆</small> <b id="selected-price">100</b><span>金币 / 盒</span></div><button class="buy-button" id="buy">让主播开一盒 <span>↗</span></button><small id="purchase-hint">开出惊喜后，由你决定去留</small></div></div></section>
+      <footer><span><i></i> 自动存档已开启 <span class="footer-dot">·</span> 所有相遇，都被好好收藏</span><span>虚构直播间 / 离线单机体验 <b>PLAY AT YOUR OWN PACE.</b></span></footer>
+    </main>
+  </div>
+  <dialog id="modal"><div id="modal-content"></div></dialog>
+  <div class="toast" id="toast" role="status"></div>
+  <script type="module" src="src/app.mjs"></script>
+</body>
+</html>
