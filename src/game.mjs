@@ -34,7 +34,7 @@ export function createGame() {
   return {
     version: 1, coins: 1200, inventory: [], discovered: [], pending: null,
     opened: 0, sold: 0, watchSeconds: 0, rewardCount: 0,
-    settings: { sound: true, fast: false }, history: [],
+    settings: { sound: true, fast: false, music: true, musicVolume: .35 }, history: [],
   };
 }
 
@@ -63,12 +63,36 @@ export function buy(state, seriesId, rng = Math.random, boxNumber = state.opened
   };
 }
 
+export function enqueue(state, seriesId, rng = Math.random, boxNumber = 1, queueAhead = 3) {
+  if (!Number.isInteger(queueAhead) || queueAhead < 0 || queueAhead > 3) throw new Error('排队位置无效。');
+  const next = buy(state, seriesId, rng, boxNumber);
+  return { ...next, pending: { ...next.pending, status: 'queued', queueAhead },
+    history: record(state, `购买「${SERIES.find(entry => entry.id === seriesId).name}」${boxNumber}号盒，已加入代拆队列`, 'buy') };
+}
+
+export function advanceQueue(state) {
+  if (state.pending?.status !== 'queued' || state.pending.queueAhead < 1) throw new Error('没有可推进的排队订单。');
+  return { ...state, pending: { ...state.pending, queueAhead: state.pending.queueAhead - 1 } };
+}
+
+export function beginQueuedOpening(state) {
+  if (state.pending?.status !== 'queued' || state.pending.queueAhead !== 0) throw new Error('还没轮到你的订单。');
+  return { ...state, pending: { ...state.pending, status: 'opening' } };
+}
+
+export function readyQueuedOpening(state) {
+  if (state.pending?.status !== 'opening') throw new Error('订单尚未开始拆封。');
+  return { ...state, pending: { ...state.pending, status: 'ready' } };
+}
+
 export function settle(state, action) {
   if (!state.pending) throw new Error('没有等待处理的藏品。');
+  if (state.pending.status && state.pending.status !== 'ready') throw new Error('请等待主播拆完你的订单。');
   if (action !== 'keep' && action !== 'sell') throw new Error('请选择收入背包或折现。');
   const item = getItem(state.pending.itemId);
   if (action === 'keep') {
-    return { ...state, pending: null, inventory: [...state.inventory, { ...state.pending }],
+    const { status, queueAhead, ...instance } = state.pending;
+    return { ...state, pending: null, inventory: [...state.inventory, instance],
       history: record(state, `${item.name}已收入背包`, 'keep') };
   }
   return { ...state, pending: null, coins: state.coins + item.value, sold: state.sold + 1,
@@ -109,6 +133,8 @@ export function hydrate(raw) {
   if (!safeInt(raw.coins) || !safeInt(raw.opened) || !safeInt(raw.sold) || !safeInt(raw.rewardCount) || raw.rewardCount > 3) invalid();
   if (!Number.isFinite(raw.watchSeconds) || raw.watchSeconds < 0 || raw.watchSeconds >= 30 || (raw.rewardCount === 3 && raw.watchSeconds !== 0)) invalid();
   if (!raw.settings || typeof raw.settings.sound !== 'boolean' || typeof raw.settings.fast !== 'boolean') invalid();
+  if (raw.settings.music !== undefined && typeof raw.settings.music !== 'boolean') invalid();
+  if (raw.settings.musicVolume !== undefined && (!Number.isFinite(raw.settings.musicVolume) || raw.settings.musicVolume < 0 || raw.settings.musicVolume > 1)) invalid();
   if (!Array.isArray(raw.inventory) || !Array.isArray(raw.discovered) || !Array.isArray(raw.history) || raw.history.length > 30) invalid();
   if (raw.discovered.some(id => typeof id !== 'string' || !getItem(id)) || new Set(raw.discovered).size !== raw.discovered.length || raw.discovered.length > raw.opened) invalid();
   const ids = new Set();
@@ -123,6 +149,10 @@ export function hydrate(raw) {
   }
   const inventory = raw.inventory.map(instance);
   const pending = raw.pending === null ? null : instance(raw.pending);
+  if (pending && raw.pending.status !== undefined) {
+    if (!['queued', 'opening', 'ready'].includes(raw.pending.status) || !Number.isInteger(raw.pending.queueAhead) || raw.pending.queueAhead < 0 || raw.pending.queueAhead > 3 || (raw.pending.status !== 'queued' && raw.pending.queueAhead !== 0)) invalid();
+    pending.status = raw.pending.status; pending.queueAhead = raw.pending.queueAhead;
+  } else if (pending && raw.pending.queueAhead !== undefined) invalid();
   if (raw.opened !== inventory.length + raw.sold + (pending ? 1 : 0)) invalid();
   const history = raw.history.map(entry => {
     if (!entry || typeof entry.text !== 'string' || entry.text.length > 300 || (entry.type !== undefined && typeof entry.type !== 'string')) invalid();
@@ -131,6 +161,6 @@ export function hydrate(raw) {
   return {
     version: 1, coins: raw.coins, inventory, discovered: [...raw.discovered], pending,
     opened: raw.opened, sold: raw.sold, watchSeconds: raw.watchSeconds, rewardCount: raw.rewardCount,
-    settings: { sound: raw.settings.sound, fast: raw.settings.fast }, history,
+    settings: { sound: raw.settings.sound, fast: raw.settings.fast, music: raw.settings.music ?? true, musicVolume: raw.settings.musicVolume ?? .35 }, history,
   };
 }

@@ -37,9 +37,11 @@ try {
     const image = new Image();
     image.onload = () => resolve(image.naturalWidth > 0);
     image.onerror = () => resolve(false);
-    image.src = new URL('assets/studio-unboxing.png', location.href).href;
+    image.src = new URL('assets/studio-live-empty.png', location.href).href;
   }));
   assert.equal(backgroundLoaded, true, 'Packaged workstation art is available');
+  // The live room deliberately pauses between orders when its window is hidden.
+  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].showInactive());
   await page.locator('[data-box="5"]').click();
   await page.locator('#buy').click();
   await page.waitForSelector('[data-action="keep-result"]');

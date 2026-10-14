@@ -8,6 +8,8 @@
   <link rel="stylesheet" href="src/style.css" />
   <link rel="stylesheet" href="src/studio.css" />
   <link rel="stylesheet" href="src/reel.css" />
+  <link rel="stylesheet" href="src/live-scene.css" />
+  <link rel="stylesheet" href="src/live-room.css" />
 </head>
 <body>
   <div class="app-shell">
@@ -18,7 +20,7 @@
         <button class="nav-item" id="nav-bag"><span>▢</span>我的背包<i id="bag-count">0</i></button>
         <button class="nav-item" id="nav-collection"><span>▦</span>收藏图鉴</button>
       </div>
-      <div class="side-bottom"><span class="offline-dot"></span>单机模式<button class="nav-item" id="nav-settings"><span>⚙</span>设置</button><small>v0.2.0</small></div>
+      <div class="side-bottom"><span class="offline-dot"></span>单机模式<button class="nav-item" id="nav-settings"><span>⚙</span>设置</button><small>v0.3.0</small></div>
     </aside>
     <main>
       <header class="topbar">
@@ -28,24 +30,22 @@
       <div class="page-heading"><div><div class="eyebrow">YOUR FRONT ROW AT THE UNBOXING TABLE</div><h1>下一单，拆你的期待<span>✳</span></h1></div><div class="session-meta"><span class="status-dot"></span> 现场代拆 <span class="divider">/</span> 已拆 <b id="opened">0</b> 盒</div></div>
       <section class="live-layout">
         <div class="stream-panel">
-          <div class="stream-top"><div class="host-avatar">小</div><div><strong>小桃 · 潮玩代拆现场 <span class="verified">✓</span></strong><small>下单报号 → 主播拿盒 → 当面拆封</small></div><span class="live-pill">● LIVE</span><span class="viewers">◉ 2,368</span></div>
+          <div class="stream-top"><div class="host-avatar">小</div><div><strong>小桃 · 潮玩代拆现场 <span class="verified">✓</span></strong><small>左侧排队 → 右侧撕袋 → 卡牌揭晓</small></div><span class="live-pill">● LIVE</span><span class="viewers">◉ 2,368</span></div>
           <div class="stage" id="stage">
             <div class="scene-backdrop"></div>
             <div class="stage-shade"></div>
-            <div class="stage-label"><span>CAM 01 / 拆盒工作台</span><strong id="stage-theme">街角漫游 · 正在代拆</strong><small>整盒陈列 / 现场拆封 / 藏品展示</small></div>
+            <div class="stage-label"><span>CAM 01 / 拆盒工作台</span><strong id="stage-theme">街角漫游 · 正在代拆</strong><small>CONTINUOUS UNBOXING</small></div>
             <div class="order-receipt"><span>当前拆单 <i>ON AIR</i></span><strong id="order-title">等你选一盒</strong><small id="order-detail">专属席位 · 随拍随拆</small></div>
             <div class="host-bubble" id="host-line">看好哪一号了？也可以让我来挑。</div>
-            <div class="opening-label" id="opening-label" aria-live="polite"></div>
-            <div class="box-selection"><div class="tray-heading"><span>本轮待拆 · 任选一盒</span><button id="auto-pick" aria-pressed="true">✓ 主播帮选</button></div><div id="box-grid" class="box-grid" aria-label="选择盲盒编号"></div><div class="tray-base"></div></div>
-            <div class="box-scene" id="box-scene"><div class="box-shadow"></div><div class="mystery-box" id="mystery-box"><div class="box-lid"></div><div class="box-face"><small>PLAY / CLUB</small><span id="opening-box-number">01</span><b>你的专属盲盒</b><div class="box-sticker">✳</div></div><div class="seal-strip"></div></div><div class="box-plinth"></div></div>
+            <div class="queue-panel"><div class="queue-heading"><strong>待拆队列</strong><span>LIVE QUEUE</span></div><small id="queue-status">观众订单 · 持续代拆</small><div id="queue-list"></div><div class="box-selection"><div class="tray-heading"><span>选我的袋号</span><button id="auto-pick" aria-pressed="true">✓ 主播帮选</button></div><div id="box-grid" class="box-grid" aria-label="选择盲盒编号"></div></div></div>
             <div class="stage-caption"><span class="live-indicator">●</span> <span id="table-status">点击桌上编号选盒，或让主播帮你选</span><span class="caption-right">本场三款系列 · 持续补盒</span></div>
-            <div class="stage-controls"><button id="sound-toggle" title="切换音效" aria-label="切换音效">♫</button><span>画质 · 心动</span><button id="fullscreen" title="全屏" aria-label="全屏">⛶</button></div>
+            <div class="stage-controls"><button id="sound-toggle" title="切换音效" aria-label="切换音效">♫</button><button id="music-toggle" aria-label="切换背景音乐" aria-pressed="true">♫ 音乐开</button><span>原创音乐 · 模拟观众持续代拆</span><button id="fullscreen" title="全屏" aria-label="全屏">⛶</button></div>
           </div>
-          <div class="stream-bottom"><ol class="order-steps" aria-label="当前拆盒步骤"><li data-step="1" class="active"><i>01</i>选盒下单</li><li data-step="2"><i>02</i>主播拆封</li><li data-step="3"><i>03</i>滚动揭晓</li><li data-step="4"><i>04</i>去留由你</li></ol><button class="subtle-button" id="rules">玩法说明 ↗</button></div>
+          <div class="stream-bottom"><ol class="order-steps" aria-label="当前拆盒步骤"><li data-step="1" class="active"><i>01</i>下单排队</li><li data-step="2"><i>02</i>主播拆封</li><li data-step="3"><i>03</i>滚动揭晓</li><li data-step="4"><i>04</i>去留由你</li></ol><button class="subtle-button" id="rules">玩法说明 ↗</button></div>
         </div>
         <aside class="chat-panel">
           <div class="chat-heading"><h2>直播间聊天 <span>CHAT</span></h2><span class="chat-count">2.3k</span></div>
-          <div class="pinned"><span>♧</span><p><b>小桃的置顶</b>下单后给你报号拿盒，当面拆封！开出后可折现或收进背包。桌面编号不影响出货概率。</p></div>
+          <div class="pinned"><span>♧</span><p><b>小桃的置顶</b>下单加入左侧队列，轮到你再专属揭晓！开出后可折现或收进背包。桌面编号不影响出货概率。</p></div>
           <div class="chat-messages" id="chat-messages" aria-label="模拟直播弹幕"></div>
           <div class="chat-compose"><button id="send-chat">和大家打个招呼…<span>↗</span></button><button class="heart-button" id="heart" aria-label="送出爱心">♡</button></div>
           <div class="watch-reward"><div class="gift-icon">♧</div><div><strong>陪伴也有小惊喜</strong><small id="reward-status">再看 30 秒，领取 60 金币</small></div><button id="claim-reward" disabled>待领取</button><div class="reward-track"><div id="reward-progress"></div></div></div>

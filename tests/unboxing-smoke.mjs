@@ -19,7 +19,7 @@ try {
   await page.goto('http://127.0.0.1:4173');
   await fresh();
   await page.waitForTimeout(500);
-  await page.screenshot({ path: 'artifacts/v0.2.0-studio.png' });
+  await page.screenshot({ path: 'artifacts/v0.3.0-studio.png' });
   await page.locator('[data-box="4"]').click();
   assert.equal(await page.locator('[data-box="4"]').getAttribute('aria-pressed'), 'true');
   await page.locator('#buy').click();
@@ -31,7 +31,7 @@ try {
   await page.waitForTimeout(850);
   const secondPosition = await page.locator('.reel-track').evaluate(element => getComputedStyle(element).transform);
   assert.notEqual(firstPosition, secondPosition, 'The paid order visibly rolls through cards');
-  await page.screenshot({ path: 'artifacts/v0.2.0-reel.png' });
+  await page.screenshot({ path: 'artifacts/v0.3.0-reel.png' });
   await page.keyboard.press('Escape');
   assert.equal(await page.locator('#modal').evaluate(element => element.open), true, 'Escape does not abandon the paid order');
   await page.setViewportSize({ width: 1280, height: 720 });
@@ -79,7 +79,7 @@ try {
   const started = Date.now();
   await page.locator('#buy').click();
   await page.waitForSelector('[data-action="keep-result"]');
-  assert.ok(Date.now() - started < 2500, 'Reduced motion avoids the long spinning sequence');
+  assert.ok(Date.now() - started < 6500, 'Reduced motion keeps the queue and reveal brief without long spinning');
   assert.deepEqual(errors, []);
   console.log('PASS: numbered order, real reel motion, Escape guard, resize alignment, exact winner, reload mid-spin, skip, reduced motion.');
 } finally { await browser.close(); }

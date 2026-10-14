@@ -1,6 +1,8 @@
-import { SERIES, RARITIES, createGame, buy, settle, sellItem, tickWatch, claimReward, hydrate, getItem, collectionValue } from './game.mjs';
+import { SERIES, RARITIES, createGame, enqueue, advanceQueue, beginQueuedOpening, readyQueuedOpening, settle, sellItem, tickWatch, claimReward, hydrate, getItem, collectionValue } from './game.mjs';
 import { toy } from './art.mjs';
 import { playReel } from './reel.mjs';
+import { createLiveScene } from './live-scene.mjs';
+import { createMusicPlayer } from './music.mjs';
 
 const $ = selector => document.querySelector(selector);
 const format = value => value.toLocaleString('zh-CN');
@@ -18,6 +20,15 @@ let audio;
 let newDiscovery = false;
 let resetting = false;
 let selectedBox = null;
+let activeNPC = null;
+let activePlayer = null;
+let npcSerial = 0;
+let npcQueue = [];
+let liveEpoch = 0;
+let liveRunning = false;
+const music = createMusicPlayer();
+let appliedMusic = '';
+const scene = createLiveScene({ container: $('#stage'), onCue: liveCue });
 const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const pad = value => String(value).padStart(2, '0');
 
@@ -30,15 +41,62 @@ function setStep(step) {
 function renderBoxes() {
   $('#box-grid').innerHTML = Array.from({ length: 6 }, (_, index) => {
     const number = index + 1;
-    return `<button class="table-box ${selectedBox === number ? 'chosen' : ''}" data-box="${number}" aria-label="选择 ${number} 号盲盒" aria-pressed="${selectedBox === number}" style="--box-color:${selected.color}"><span class="table-box-top"></span><span class="table-box-front"><small>PLAY CLUB</small><b>${pad(number)}</b><span>原封盲盒</span><i>✳</i></span><span class="table-box-foot">${pad(number)} 号</span></button>`;
+    return `<button class="table-box ${selectedBox === number ? 'chosen' : ''}" data-box="${number}" aria-label="选择 ${number} 号盲盒" aria-pressed="${selectedBox === number}" style="--box-color:${selected.color}">${pad(number)}</button>`;
   }).join('');
   $('#auto-pick').setAttribute('aria-pressed', String(selectedBox === null));
   $('#auto-pick').textContent = selectedBox === null ? '✓ 主播帮选' : '让主播帮选';
   render();
 }
 function updateOrder(pending = null) {
-  $('#order-title').textContent = pending ? `第 ${String(state.opened).padStart(3, '0')} 单 · 我的订单` : '等你选一盒';
-  $('#order-detail').textContent = pending ? `${SERIES.find(series => series.id === pending.seriesId).name} / ${pending.boxNumber ? `${pad(pending.boxNumber)} 号盒` : '历史订单'}` : '专属席位 · 随拍随拆';
+  const order = pending || activePlayer || activeNPC;
+  $('#order-title').textContent = order ? `${order.isPlayer || order.id?.startsWith('box-') ? '我的订单' : order.owner} · 正在代拆` : '下一袋马上开始';
+  $('#order-detail').textContent = order ? `${SERIES.find(series => series.id === order.seriesId).name} / ${pad(order.boxNumber || 1)} 号袋` : '现场撕袋 · 连续开箱';
+}
+
+function syncMusic() {
+  const key = `${state.settings.music}:${state.settings.musicVolume}`;
+  if (key === appliedMusic) return;
+  appliedMusic = key;
+  music.setVolume(state.settings.musicVolume);
+  music.setEnabled(state.settings.music);
+}
+function makeNPC() {
+  const serial = ++npcSerial;
+  const series = SERIES[(serial - 1) % SERIES.length];
+  const names = ['半糖拿铁', '云朵收藏家', '薄荷汽水', '阿橘', '桃子乌龙', '盒子里的宇宙'];
+  return { id: `npc-${serial}`, owner: names[(serial - 1) % names.length], seriesId: series.id, itemId: series.items[[0, 1, 0, 2, 1, 0, 3][(serial - 1) % 7]].id, boxNumber: (serial - 1) % 6 + 1, isPlayer: false };
+}
+function fillQueue() {
+  const needed = state.pending?.status === 'queued' ? Math.max(0, state.pending.queueAhead - (activeNPC ? 1 : 0)) : 2;
+  while (npcQueue.length < needed) npcQueue.push(makeNPC());
+  if (npcQueue.length > needed) npcQueue.length = needed;
+}
+function renderQueue() {
+  const list = $('#queue-list');
+  if (!list) return;
+  const waiting = [...npcQueue];
+  if (state.pending?.status === 'queued') waiting.push({ ...state.pending, owner: '我的订单', isPlayer: true });
+  const markup = waiting.slice(0, 3).map((order, index) => {
+    const series = SERIES.find(entry => entry.id === order.seriesId);
+    return `<div class="queue-row queue-order ${order.isPlayer ? 'my-order mine' : ''}" data-order-id="${escape(order.id)}" data-player="${order.isPlayer}" style="--queue-color:${series.color}"><span class="queue-package" style="--parcel:${series.color}"><b>${pad(order.boxNumber)}</b><small>PLAY</small></span><div class="queue-copy"><strong>${escape(order.owner)}</strong><small>${series.name} · ${pad(order.boxNumber)} 号袋</small></div><em class="queue-position">${order.isPlayer ? '我的' : `${index + 1} 待拆`}</em></div>`;
+  }).join('');
+  if (list.dataset.orders !== markup) { list.innerHTML = markup; list.dataset.orders = markup; }
+  $('#queue-status').textContent = state.pending?.status === 'queued' ? state.pending.queueAhead ? `我的订单 · 前面还有 ${state.pending.queueAhead} 袋` : '轮到你了 · 请看主播拆袋' : activePlayer ? '正在拆你的盲袋' : '下单后加入队尾 · 按顺序代拆';
+}
+function liveCue(phase, order) {
+  if (blocked || !order) return;
+  const name = order.isPlayer ? '你' : order.owner;
+  if (phase === 'receive') {
+    updateOrder(order);
+    $('#host-line').textContent = `${name}的 ${pad(order.boxNumber)} 号袋，接单！先给大家检查封口。`;
+    $('#table-status').textContent = `正在代拆 · ${name} · ${pad(order.boxNumber)} 号袋`;
+    sound('tap');
+  } else if (phase === 'grip') $('#host-line').textContent = '捏住两边，准备好——要撕啦！';
+  else if (phase === 'tear') { $('#host-line').textContent = '三、二、一！拆开这份小惊喜！'; sound('tear'); }
+  else if (phase === 'reveal') {
+    $('#host-line').textContent = order.isPlayer ? '你的卡出来了！来看看指针会停在哪里。' : `${getItem(order.itemId).name}！${name}这袋拆出来啦。`;
+    if (!order.isPlayer) { addChat(order.owner, `我的 ${pad(order.boxNumber)} 号袋开到${getItem(order.itemId).name}！`, order.owner.slice(0, 1)); sound('coin'); }
+  }
 }
 
 async function writeSave(next) {
@@ -81,6 +139,17 @@ function sound(type = 'tap') {
   try {
     audio ||= new AudioContext();
     if (audio.state === 'suspended') audio.resume();
+    if (type === 'tear') {
+      const buffer = audio.createBuffer(1, Math.floor(audio.sampleRate * .2), audio.sampleRate);
+      const samples = buffer.getChannelData(0);
+      for (let i = 0; i < samples.length; i++) samples[i] = (Math.random() * 2 - 1) * (1 - i / samples.length);
+      const source = audio.createBufferSource(); source.buffer = buffer;
+      const filter = audio.createBiquadFilter(); filter.type = 'highpass'; filter.frequency.value = 1700;
+      const gain = audio.createGain(); gain.gain.value = .07;
+      source.connect(filter); filter.connect(gain); gain.connect(audio.destination); source.start();
+      source.onended = () => { source.disconnect(); filter.disconnect(); gain.disconnect(); };
+      return;
+    }
     const frequencies = type === 'reveal' ? [523, 659, 784, 1047] : type === 'coin' ? [880, 1175] : type === 'tick' ? [1450] : [440];
     frequencies.forEach((frequency, index) => {
       const oscillator = audio.createOscillator();
@@ -99,15 +168,18 @@ function render() {
   $('#bag-count').textContent = state.inventory.length;
   $('#sound-toggle').textContent = state.settings.sound ? '♫' : '♪';
   $('#sound-toggle').setAttribute('aria-label', state.settings.sound ? '关闭音效' : '开启音效');
+  if ($('#music-toggle')) { $('#music-toggle').textContent = state.settings.music ? 'BGM ♫' : 'BGM —'; $('#music-toggle').setAttribute('aria-pressed', String(state.settings.music)); $('#music-toggle').setAttribute('aria-label', state.settings.music ? '关闭背景音乐' : '开启背景音乐'); }
+  syncMusic();
   const buyButton = $('#buy');
   buyButton.disabled = busy || Boolean(state.pending) || blocked;
-  buyButton.innerHTML = busy ? '主播正在拆盒… <span>✦</span>' : '让主播开一盒 <span>↗</span>';
-  $('#purchase-hint').textContent = state.coins < selected.price ? `还差 ${format(selected.price - state.coins)} 金币，可领取观看奖励` : selectedBox ? `已选 ${pad(selectedBox)} 号盒 · 下单后现场拆封` : '主播替你选盒 · 下单后现场拆封';
+  buyButton.innerHTML = busy ? '主播正在拆你的袋… <span>✦</span>' : state.pending ? '我的订单已排队 <span>✓</span>' : '下单 · 加入代拆队列 <span>↗</span>';
+  $('#purchase-hint').textContent = state.pending?.status === 'queued' ? `前面还有 ${state.pending.queueAhead} 袋 · 轮到你时自动揭晓` : state.coins < selected.price ? `还差 ${format(selected.price - state.coins)} 金币，可领取观看奖励` : selectedBox ? `已选 ${pad(selectedBox)} 号袋 · 下单后按顺序拆封` : '主播替你选袋 · 排到你时揭晓';
   document.querySelectorAll('[data-box], #auto-pick').forEach(element => { element.disabled = busy || Boolean(state.pending) || blocked; });
   $('#reward-status').textContent = state.rewardCount ? `已攒下 ${state.rewardCount} 份 · ${state.rewardCount * 60} 金币` : `再看 ${Math.ceil(30 - state.watchSeconds)} 秒，领取 60 金币`;
   $('#claim-reward').disabled = !state.rewardCount || blocked;
   $('#claim-reward').textContent = state.rewardCount ? `领取 +${state.rewardCount * 60}` : '待领取';
   $('#reward-progress').style.width = `${state.rewardCount === 3 ? 100 : state.watchSeconds / 30 * 100}%`;
+  renderQueue();
 }
 function renderSeries() {
   const kickers = ['A LITTLE CITY ADVENTURE', 'A LETTER FROM THE WOODS', 'SOMEWHERE IN THE UNIVERSE'];
@@ -115,8 +187,6 @@ function renderSeries() {
   $('#selected-label').textContent = selected.name;
   $('#selected-price').textContent = format(selected.price);
   $('#stage-theme').textContent = `${selected.name} · 正在代拆`;
-  $('.box-face').style.background = `linear-gradient(115deg,color-mix(in srgb,${selected.color} 65%,white),${selected.color})`;
-  $('.box-lid').style.background = `linear-gradient(color-mix(in srgb,${selected.color} 45%,white) 25%,${selected.color} 26%)`;
   renderBoxes();
 }
 function showModal(kind, html, className = '') {
@@ -136,58 +206,92 @@ function modalHeader(title, subtitle = '') {
 const wait = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
 async function purchase() {
   if (busy || saving || blocked || state.pending) return;
-  let next;
   const number = selectedBox || Math.floor(Math.random() * 6) + 1;
-  try { next = buy(state, selected.id, Math.random, number); } catch (error) { toast(error.message); sound(); return; }
+  let next;
+  try { next = enqueue(state, selected.id, Math.random, number, activeNPC ? 3 : 2); }
+  catch (error) { toast(error.message); sound(); return; }
   newDiscovery = !state.discovered.includes(next.pending.itemId);
   busy = true;
-  render();
-  if (!await commit(next)) { busy = false; render(); return; }
-  try {
-    const order = { ...state.pending };
-    const fast = state.settings.fast || reducedMotion();
-    updateOrder(order);
-    setStep(2);
+  if (await commit(next)) {
+    fillQueue();
+    setStep(1);
+    addChat('我', '拍下「' + selected.name + '」' + pad(number) + ' 号袋，加入代拆队列。', '我', true);
+    toast('订单已排队，前面还有 ' + state.pending.queueAhead + ' 袋。');
     sound();
-    addChat('我', `拍下「${selected.name}」，请拆 ${pad(number)} 号盒。`, '我', true);
-    $('#host-line').textContent = `收到第 ${state.opened} 单！拿 ${pad(number)} 号，给你检查封条。`;
-    $('#table-status').textContent = `正在处理你的订单 · ${pad(number)} 号盒`;
-    $('#stage').classList.add('selecting');
-    if (!selectedBox && !fast) {
-      for (const highlight of [2, 5, number]) {
-        document.querySelectorAll('[data-box]').forEach(element => element.classList.toggle('picked', Number(element.dataset.box) === highlight));
-        sound('tick');
-        await wait(160);
-      }
-    }
-    document.querySelectorAll('[data-box]').forEach(element => element.classList.toggle('picked', Number(element.dataset.box) === number));
-    await wait(fast ? 30 : 350);
-    $('#opening-box-number').textContent = pad(number);
-    $('#stage').classList.add('opening');
-    $('#opening-label').textContent = `${pad(number)} 号已取出 · 正在拆封`;
-    await wait(fast ? 50 : 650);
-    $('#stage').classList.remove('opening');
-    $('#stage').classList.add('reveal');
-    $('#opening-label').textContent = '封条已拆 · 开始揭晓';
-    await wait(fast ? 30 : 300);
+  }
+  busy = false;
+  render();
+}
+async function saveTransition(transform, epoch) {
+  while (epoch === liveEpoch && !blocked) {
+    if (saving || resetting) { await wait(80); continue; }
+    if (await commit(transform(state))) return true;
+    $('#table-status').textContent = '正在等待存档恢复 · 订单和结果已保留';
+    await wait(1500);
+  }
+  return false;
+}
+async function playerTurn(epoch) {
+  if (modal.open || !state.pending || blocked || busy || saving) return;
+  busy = true;
+  try {
+    if (state.pending.status === 'queued' && !await saveTransition(beginQueuedOpening, epoch)) return;
+    if (epoch !== liveEpoch || state.pending?.status !== 'opening') return;
+    activePlayer = { ...state.pending, owner: '我', isPlayer: true };
+    const order = activePlayer;
+    const series = SERIES.find(entry => entry.id === order.seriesId);
+    setStep(2); fillQueue(); render();
+    try { await scene.play(order, { fast: state.settings.fast, reducedMotion: reducedMotion() }); }
+    catch (error) { console.error('Physical opening failed', error); }
+    if (epoch !== liveEpoch) return;
+    if (!await saveTransition(readyQueuedOpening, epoch)) return;
     setStep(3);
-    showModal('reel', `<div class="opening-header"><div><span>LIVE UNBOXING / 现场拆单</span><h2>这一盒，会是谁？</h2><p>第 ${String(state.opened).padStart(3, '0')} 单 · ${selected.name} · ${pad(number)} 号盒</p></div><div class="opening-host"><span>小桃</span><b>正在为你开盒</b></div></div><div id="reel-container"></div><div class="opening-footer"><span>✦ ${selected.name} / 4 款可收藏</span><span>揭晓后选择折现或收入背包</span></div>`, 'opening-dialog');
-    await playReel({
-      container: $('#reel-container'), items: selected.items, winnerId: order.itemId, seed: `${order.id}:${order.itemId}`,
-      fast: state.settings.fast, reducedMotion: reducedMotion(), onTick: () => sound('tick'),
-      onPhase: phase => { if (phase === 'revealed') sound('reveal'); }
-    });
+    music.setDucked(true);
+    showModal('reel', '<div class="opening-header"><div><span>LIVE UNBOXING / 现场拆单</span><h2>这一袋，会是谁？</h2><p>第 ' + String(state.opened).padStart(3, '0') + ' 单 · ' + series.name + ' · ' + pad(order.boxNumber || 1) + ' 号袋</p></div><div class="opening-host"><span>小桃</span><b>正在为你开袋</b></div></div><div id="reel-container"></div><div class="opening-footer"><span>✦ ' + series.name + ' / 4 款可收藏</span><span>揭晓后选择折现或收入背包</span></div>', 'opening-dialog');
+    await playReel({ container: $('#reel-container'), items: series.items, winnerId: order.itemId,
+      seed: order.id + ':' + order.itemId, fast: state.settings.fast, reducedMotion: reducedMotion(),
+      onTick: () => sound('tick'), onPhase: phase => { if (phase === 'revealed') sound('reveal'); } });
   } catch (error) {
     console.error('Opening presentation failed', error);
-    toast('动画暂时中断，已为你保留并展示本次藏品。');
+    toast('动画暂时中断，已保留订单，正在继续处理。');
   } finally {
+    music.setDucked(false);
+    activePlayer = null;
     busy = false;
-    showResult();
+    if (state.pending?.status === 'ready') showResult();
     render();
   }
 }
+async function runLive() {
+  if (liveRunning) return;
+  liveRunning = true;
+  while (liveRunning) {
+    if (blocked || saving || busy || resetting || document.hidden) { await wait(100); continue; }
+    const epoch = liveEpoch;
+    if (state.pending?.status === 'opening' || (state.pending?.status === 'queued' && state.pending.queueAhead === 0)) {
+      if (modal.open) { await wait(100); continue; }
+      await playerTurn(epoch);
+      continue;
+    }
+    fillQueue();
+    activeNPC = npcQueue.shift() || makeNPC();
+    fillQueue(); renderQueue();
+    const opening = activeNPC;
+    try { await scene.play(opening, { fast: state.settings.fast, reducedMotion: reducedMotion() }); }
+    catch (error) { console.error('Live performance failed', error); await wait(500); }
+    if (epoch !== liveEpoch) continue;
+    while ((saving || busy || resetting) && epoch === liveEpoch) await wait(60);
+    if (epoch !== liveEpoch) continue;
+    if (state.pending?.status === 'queued' && state.pending.queueAhead > 0) {
+      if (!await saveTransition(advanceQueue, epoch)) { await wait(300); continue; }
+    }
+    activeNPC = null;
+    fillQueue(); renderQueue();
+    await wait(state.settings.fast || reducedMotion() ? 60 : 180);
+  }
+}
 function showResult() {
-  if (!state.pending) return;
+  if (!state.pending || (state.pending.status && state.pending.status !== 'ready')) return;
   const item = getItem(state.pending.itemId);
   const rarity = RARITIES[item.rarity];
   const series = SERIES.find(entry => entry.id === state.pending.seriesId);
@@ -203,7 +307,6 @@ async function resolveResult(action) {
   if (!await commit(settle(state, action))) return;
   modal.close(); modalKind = '';
   $('#stage').classList.remove('opening', 'reveal', 'selecting');
-  $('#opening-label').textContent = '';
   selectedBox = null;
   renderBoxes();
   setStep(1);
@@ -235,11 +338,11 @@ function openOdds() {
 }
 function openRules() {
   if (busy || state.pending || blocked) return;
-  showModal('rules', modalHeader('欢迎来到拆播间', '一场悠闲的收藏之旅，从这里开始。') + `<div class="modal-body"><div class="rule-list">${[['坐下来，看一会儿直播','你有 1,200 枚初始金币。前台观看直播每 30 秒可获得一份 60 金币奖励，最多积攒 3 份；切到后台或打开面板时暂停。'],['挑选喜欢的盲盒','从三个系列挑选，点击桌面 01–06 号盒，或交给主播帮选。下单后报号、拆封，再滚动揭晓藏品；盒号不改变概率。'],['为惊喜，选一个去处','滚动条在中央指针处停下，展示你的藏品。可跳过动画，结果不变。随后选择折现或收入背包；图鉴会保留发现记录。'],['按自己的节奏来','游戏会自动保存。空格开盒，Esc 关闭面板，F11 切换全屏。设置中可开启快速开盒，或关闭音效。']].map(([title, text], index) => `<div class="rule-step"><span>0${index + 1}</span><div><h3>${title}</h3><p>${text}</p></div></div>`).join('')}</div></div>`, 'help-dialog');
+  showModal('rules', modalHeader('欢迎来到拆播间', '一场悠闲的收藏之旅，从这里开始。') + `<div class="modal-body"><div class="rule-list">${[['坐下来，看一会儿直播','你有 1,200 枚初始金币。前台观看直播每 30 秒可获得一份 60 金币奖励，最多积攒 3 份；切到后台或打开面板时暂停。'],['挑选喜欢的盲盒','从三个系列挑选，点击桌面 01–06 号盒，或交给主播帮选。下单后加入左侧队列，主播会持续替其他藏友拆袋；排到你时再拆袋、滚动揭晓，袋号不改变概率。'],['为惊喜，选一个去处','滚动条在中央指针处停下，展示你的藏品。可跳过动画，结果不变。随后选择折现或收入背包；图鉴会保留发现记录。'],['按自己的节奏来','游戏会自动保存。空格开盒，Esc 关闭面板，F11 切换全屏。设置中可开启快速开盒，独立调节背景音乐与音效。']].map(([title, text], index) => `<div class="rule-step"><span>0${index + 1}</span><div><h3>${title}</h3><p>${text}</p></div></div>`).join('')}</div></div>`, 'help-dialog');
 }
 function openSettings() {
   if (busy || state.pending || blocked) return;
-  showModal('settings', modalHeader('按你的节奏来', '一点小设置，让收藏之旅更合心意。') + `<div class="modal-body"><div class="setting-row"><div><h3>游戏音效</h3><p>轻柔的点击、开盒和金币提示音</p></div><button class="toggle ${state.settings.sound ? 'on' : ''}" data-setting="sound">${state.settings.sound ? '已开启' : '已关闭'}</button></div><div class="setting-row"><div><h3>快速开盒</h3><p>缩短选盒拆封和滚动揭晓，也可在动画中直接跳过</p></div><button class="toggle ${state.settings.fast ? 'on' : ''}" data-setting="fast">${state.settings.fast ? '已开启' : '已关闭'}</button></div><div class="setting-row"><div><h3>重新开始</h3><p>清空金币、背包和收藏记录，恢复初始状态</p></div><button class="danger-button" data-action="reset-confirm">重置存档</button></div><p class="version-note">拆播间 · Live Shopping Simulator v0.2.0<br>原创虚构直播间 · 离线单机 · 游戏内虚拟金币<br>${window.desktop ? '桌面存档保存在当前用户的应用数据目录。' : '网页预览存档保存在当前浏览器，与桌面版互相独立。'}</p><h3 style="font-size:12px">最近的收藏足迹</h3><ul class="history-list">${state.history.slice(0, 8).map(entry => `<li>${escape(entry.text)}</li>`).join('') || '<li>故事才刚刚开始。</li>'}</ul></div>`, 'help-dialog');
+  showModal('settings', modalHeader('按你的节奏来', '一点小设置，让收藏之旅更合心意。') + `<div class="modal-body"><div class="setting-row"><div><h3>游戏音效</h3><p>轻柔的点击、开盒和金币提示音</p></div><button class="toggle ${state.settings.sound ? 'on' : ''}" data-setting="sound">${state.settings.sound ? '已开启' : '已关闭'}</button></div><div class="setting-row"><div><h3>背景音乐</h3><p>原创轻快纯音乐 · 16 小节无缝循环</p></div><button class="toggle ${state.settings.music ? 'on' : ''}" data-setting="music">${state.settings.music ? '已开启' : '已关闭'}</button></div><div class="setting-row"><div><h3>音乐音量</h3><p>开箱滚动时自动压低，切到后台暂停</p></div><label class="music-volume"><input id="music-volume" aria-label="背景音乐音量" type="range" min="0" max="1" step="0.01" value="${state.settings.musicVolume}"/><output id="music-volume-value">${Math.round(state.settings.musicVolume * 100)}%</output></label></div><div class="setting-row"><div><h3>快速开盒</h3><p>缩短选盒拆封和滚动揭晓，也可在动画中直接跳过</p></div><button class="toggle ${state.settings.fast ? 'on' : ''}" data-setting="fast">${state.settings.fast ? '已开启' : '已关闭'}</button></div><div class="setting-row"><div><h3>重新开始</h3><p>清空金币、背包和收藏记录，恢复初始状态</p></div><button class="danger-button" data-action="reset-confirm">重置存档</button></div><p class="version-note">拆播间 · Live Shopping Simulator v0.3.0<br>原创虚构直播间 · 离线单机 · 游戏内虚拟金币<br>${window.desktop ? '桌面存档保存在当前用户的应用数据目录。' : '网页预览存档保存在当前浏览器，与桌面版互相独立。'}</p><h3 style="font-size:12px">最近的收藏足迹</h3><ul class="history-list">${state.history.slice(0, 8).map(entry => `<li>${escape(entry.text)}</li>`).join('') || '<li>故事才刚刚开始。</li>'}</ul></div>`, 'help-dialog');
 }
 function addChat(name, message, avatar, self = false) {
   const element = document.createElement('div');
@@ -286,6 +389,21 @@ $('#rules').addEventListener('click', openRules);
 $('#odds').addEventListener('click', openOdds);
 $('#wallet-help').addEventListener('click', () => toast('金币用于购买盲盒；观看直播和出售藏品都能获得金币。'));
 $('#sound-toggle').addEventListener('click', async () => { if (await commit({ ...state, settings: { ...state.settings, sound: !state.settings.sound } })) { sound(); toast(state.settings.sound ? '音效已开启' : '音效已关闭'); } });
+$('#music-toggle')?.addEventListener('click', async () => {
+  if (saving || blocked) return;
+  if (await commit({ ...state, settings: { ...state.settings, music: !state.settings.music } })) toast(state.settings.music ? '背景音乐已开启' : '背景音乐已关闭');
+});
+document.addEventListener('pointerdown', () => { void music.unlock(); }, { capture: true });
+document.addEventListener('keydown', () => { void music.unlock(); }, { capture: true });
+document.addEventListener('visibilitychange', () => { music.setPaused(document.hidden); if (!document.hidden) void music.unlock(); });
+window.addEventListener('pagehide', () => { liveRunning = false; liveEpoch++; scene.destroy(); music.destroy(); });
+modal.addEventListener('input', event => { if (event.target.id === 'music-volume') $('#music-volume-value').textContent = `${Math.round(Number(event.target.value) * 100)}%`; });
+modal.addEventListener('change', async event => {
+  if (event.target.id !== 'music-volume') return;
+  const volume = Number(event.target.value);
+  if (saving || blocked || !Number.isFinite(volume) || volume < 0 || volume > 1) return;
+  if (!await commit({ ...state, settings: { ...state.settings, musicVolume: volume } })) { event.target.value = state.settings.musicVolume; $('#music-volume-value').textContent = `${Math.round(state.settings.musicVolume * 100)}%`; }
+});
 async function fullscreen() {
   try {
     if (window.desktop) await window.desktop.fullscreen();
@@ -318,8 +436,9 @@ modal.addEventListener('click', async event => {
       await backupSave();
       blocked = false;
       if (await commit(createGame())) {
-        modal.close(); modalKind = ''; selected = SERIES[0]; selectedBox = null; renderSeries();
-        $('#stage').classList.remove('opening', 'reveal', 'selecting'); $('#opening-label').textContent = '';
+        liveEpoch++; scene.reset(); activeNPC = null; activePlayer = null; npcQueue = [];
+        modal.close(); modalKind = ''; selected = SERIES[0]; selectedBox = null; fillQueue(); renderSeries();
+        $('#stage').classList.remove('opening', 'reveal', 'selecting');
         setStep(1); updateOrder();
         $('#table-status').textContent = '点击桌上编号选盒，或让主播帮你选';
         $('#host-line').textContent = '新的收藏故事，今天开始。'; toast('已重新开始，旧存档已备份。');
@@ -346,7 +465,8 @@ async function init() {
     state = raw === null ? createGame() : hydrate(JSON.parse(raw));
     blocked = false;
     renderSeries();
-    if (state.pending) { selected = SERIES.find(entry => entry.id === state.pending.seriesId); renderSeries(); showResult(); }
+    if (state.pending) { selected = SERIES.find(entry => entry.id === state.pending.seriesId); renderSeries(); if (!state.pending.status || state.pending.status === 'ready') showResult(); else setStep(2); }
+    fillQueue(); renderQueue();
   } catch (error) {
     renderSeries();
     $('#save-status').textContent = '存档需要处理';
@@ -355,3 +475,4 @@ async function init() {
   }
 }
 await init();
+void runLive();
