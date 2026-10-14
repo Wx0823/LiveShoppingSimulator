@@ -40,6 +40,13 @@ try {
     image.src = new URL('assets/studio-live-empty.png', location.href).href;
   }));
   assert.equal(backgroundLoaded, true, 'Packaged workstation art is available');
+  const hostLoaded = await page.evaluate(() => new Promise(resolve => {
+    const image = new Image();
+    image.onload = () => resolve(image.naturalWidth >= 1024);
+    image.onerror = () => resolve(false);
+    image.src = new URL('assets/host-xiaotao-atlas.png', location.href).href;
+  }));
+  assert.equal(hostLoaded, true, 'Packaged textured host artwork is available');
   // The live room deliberately pauses between orders when its window is hidden.
   await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].showInactive());
   await page.locator('[data-box="5"]').click();

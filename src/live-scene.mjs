@@ -2,6 +2,9 @@ import { toy } from './art.mjs';
 import { getItem, SERIES, RARITIES } from './game.mjs';
 
 let sceneSerial = 0;
+const hostAtlas = new URL('../assets/host-xiaotao-atlas.png', import.meta.url).href;
+// Keep the source atlas intact; SVG viewports select each transparent rigging layer.
+const texture = (viewBox, x, y, width, height) => `<svg x="${x}" y="${y}" width="${width}" height="${height}" viewBox="${viewBox}" preserveAspectRatio="none" overflow="hidden"><image href="${hostAtlas}" x="0" y="0" width="1881" height="836"/></svg>`;
 const escape = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
 
 /** Presentation only. Cancelling a performance always settles its original promise. */
@@ -20,39 +23,14 @@ export function createLiveScene({ container, onCue = () => {} }) {
       <radialGradient id="${uid}-glow"><stop stop-color="#fff6c3" stop-opacity=".95"/><stop offset=".45" stop-color="#ffc978" stop-opacity=".4"/><stop offset="1" stop-color="#ffc978" stop-opacity="0"/></radialGradient>
     </defs>
     <ellipse cx="284" cy="451" rx="162" ry="16" fill="#45362d" opacity=".16"/>
-    <g class="actor-figure">
-      <path d="M196 239Q178 256 177 297L164 449H394L379 294Q378 251 343 236Z" fill="url(#${uid}-hoodie)" stroke="#a85d40" stroke-width="2"/>
-      <path d="M239 207v36q29 26 58 0v-40" fill="url(#${uid}-skin)"/>
-      <path d="M229 225l-32 15 30 35 39-28-25-21m64-1 36 15-29 37-44-30 28-23" fill="#ffd29a" stroke="#dc9063" stroke-width="3"/>
-      <path d="M226 268v30m79-30v30" stroke="#fff0d3" stroke-width="5" stroke-linecap="round"/>
-      <path d="M217 243l18 3-2 72h73l-4-72 17-2 20 78 27 128H193l20-128Z" fill="#fff3d8" stroke="#d7bd96" stroke-width="2"/>
-      <path d="M235 357h71v48q-35 20-71 0Z" fill="#f4e5c9" stroke="#d8c5a5" stroke-width="2"/>
-      <text x="271" y="394" text-anchor="middle" font-size="11" font-weight="800" letter-spacing="2" fill="#a29175">PLAY CLUB</text>
-      <g class="actor-head">
-        <path d="M198 139Q185 63 232 43q53-25 88 11 33 32 18 93l10 65q-19 21-42 13l-87 1-34-24Z" fill="#49352f"/>
-        <ellipse cx="202" cy="150" rx="13" ry="20" fill="#efbb98"/><ellipse cx="332" cy="150" rx="13" ry="20" fill="#efbb98"/>
-        <path d="M207 106Q263 72 325 104l-3 63q-5 47-54 58-46-11-58-53Z" fill="url(#${uid}-skin)"/>
-        <path d="M200 143q-7-57 32-77 58-33 100 33l1 50-18-28q-43 1-70-36-2 31-37 45Z" fill="#5c4135"/>
-        <path d="M215 99q11-34 47-37m14-3q26 7 41 28" fill="none" stroke="#8d6250" stroke-width="8" stroke-linecap="round" opacity=".65"/>
-        <path d="M214 185l-13 15 23 1m94-14 13 16-23-1" stroke="#78513d" stroke-width="3" fill="none"/>
-        <path d="M224 138q12-7 25-1m38-1q13-6 24 2" stroke="#745040" stroke-width="3" stroke-linecap="round" fill="none"/>
-        <g class="actor-eyes"><ellipse cx="239" cy="152" rx="5.5" ry="8" fill="#4a3d36"/><ellipse cx="299" cy="152" rx="5.5" ry="8" fill="#4a3d36"/><circle cx="241" cy="149" r="2" fill="#fff"/><circle cx="301" cy="149" r="2" fill="#fff"/></g>
-        <path d="M269 155l-3 15h5" fill="none" stroke="#d99c7d" stroke-width="2" stroke-linecap="round"/>
-        <ellipse cx="225" cy="173" rx="12" ry="6" fill="#e79686" opacity=".45"/><ellipse cx="311" cy="173" rx="12" ry="6" fill="#e79686" opacity=".45"/>
-        <path class="actor-mouth" d="M252 185q18 17 35-1-17 5-35 1" fill="#b6645a"/><path d="M258 186l23-1q-12 7-23 1" fill="#fff9e7"/>
-        <rect x="313" y="106" width="19" height="7" rx="3.5" fill="#f4c370" transform="rotate(30 313 106)"/>
-        <circle cx="202" cy="174" r="4" fill="#e1b361"/><circle cx="334" cy="174" r="4" fill="#e1b361"/>
-      </g>
+    <g class="actor-figure actor-portrait" data-testid="actor-portrait">
+      ${texture('112 4 490 828', 145, 12, 250, 426)}
     </g>
     <g class="actor-arm actor-arm-left" data-testid="actor-left-arm">
-      <path d="M204 248Q169 241 155 278l-17 52q-2 25 26 25l60-15-7-31-38 4 35-40Z" fill="url(#${uid}-hoodie)" stroke="#b56b48" stroke-width="2.5"/>
-      <path d="M214 309l12 32" stroke="#e29a70" stroke-width="13"/>
-      <g class="actor-hand actor-hand-left"><path d="M219 312l17-11q9-5 14 2l8 14-9 17-24 6Z" fill="url(#${uid}-skin)" stroke="#cf9779" stroke-width="2"/><path d="M235 311l15 9m-20-2 15 9m-18-3 12 8" stroke="#dba183" stroke-width="2" stroke-linecap="round"/></g>
+      <g transform="rotate(25 142 220)">${texture('650 345 590 420', 109, 203, 177, 126)}</g>
     </g>
     <g class="actor-arm actor-arm-right" data-testid="actor-right-arm">
-      <path d="M339 245q34 4 47 41l15 46q3 27-27 22l-63-14 10-32 40 5-30-45Z" fill="url(#${uid}-hoodie)" stroke="#b56b48" stroke-width="2.5"/>
-      <path d="M322 309l-11 32" stroke="#e29a70" stroke-width="13"/>
-      <g class="actor-hand actor-hand-right"><path d="M319 312l-19-12q-8-3-12 5l-7 13 8 15 23 7Z" fill="url(#${uid}-skin)" stroke="#cf9779" stroke-width="2"/><path d="M303 311l-15 9m20-2-15 9m18-3-12 8" stroke="#dba183" stroke-width="2" stroke-linecap="round"/></g>
+      <g transform="rotate(-25 398 220)">${texture('1285 345 570 420', 260, 203, 171, 126)}</g>
     </g>
     <g class="actor-result-light"><ellipse cx="270" cy="302" rx="180" ry="170" fill="url(#${uid}-glow)"/><path d="M270 162v-25m97 63 19-18m-206 18-19-18m210 121h25m-250 0h-23" stroke="#ffe6a2" stroke-width="5" stroke-linecap="round"/></g>
     <g class="actor-result-card" data-testid="actor-result-card"></g>
@@ -70,10 +48,10 @@ export function createLiveScene({ container, onCue = () => {} }) {
     left: node('.actor-arm-left'), right: node('.actor-arm-right'), bag: node('.actor-bag-frame'),
     bagLeft: node('.actor-bag-left'), bagRight: node('.actor-bag-right'), print: node('.actor-bag-print'),
     card: node('.actor-result-card'), light: node('.actor-result-light'),
-    handLeft: node('.actor-hand-left'), handRight: node('.actor-hand-right'),
+
   };
-  // Keep fingers in front of the foil while moving with their matching arm.
-  parts.bag.after(parts.handLeft, parts.handRight);
+  // Textured arms include their hands; place them above the bag and below the revealed card.
+  parts.bag.after(parts.left, parts.right, parts.card);
   let active = null;
   let destroyed = false;
 
@@ -116,8 +94,7 @@ export function createLiveScene({ container, onCue = () => {} }) {
         if (!element.animate || reducedMotion) return;
         const animation = element.animate(frames, { duration: duration * scale, fill: 'forwards', easing: 'cubic-bezier(.22,.7,.25,1)', ...options });
         run.animations.push(animation);
-        const hand = element === parts.left ? parts.handLeft : element === parts.right ? parts.handRight : null;
-        if (hand) run.animations.push(hand.animate(frames, { duration: duration * scale, fill: 'forwards', easing: 'cubic-bezier(.22,.7,.25,1)', ...options }));
+
       };
       const cue = phase => {
         if (active !== run) return;
@@ -131,10 +108,10 @@ export function createLiveScene({ container, onCue = () => {} }) {
           animate(parts.right, [{ transform: 'rotate(0deg)' }, { transform: 'translate(-4px, -5px) rotate(3deg)' }, { transform: 'translate(-1px, 0) rotate(0deg)' }], 800);
           animate(parts.bag, [{ transform: 'translate(0,0) scale(1)' }, { transform: 'translate(0,-4px) scale(1.04,.97)', offset: .55 }, { transform: 'translate(0,0) scale(1)' }], 800);
         } else if (phase === 'tear') {
-          animate(parts.left, [{ transform: 'translate(0,0) rotate(0deg)' }, { transform: 'translate(-33px,-12px) rotate(-14deg)', offset: .35 }, { transform: 'translate(-29px,-7px) rotate(-11deg)' }], 650);
-          animate(parts.right, [{ transform: 'translate(0,0) rotate(0deg)' }, { transform: 'translate(35px,-12px) rotate(14deg)', offset: .35 }, { transform: 'translate(29px,-7px) rotate(11deg)' }], 650);
-          animate(parts.bagLeft, [{ transform: 'translate(0,0) rotate(0deg)' }, { transform: 'translate(-62px,2px) rotate(-20deg)' }], 580);
-          animate(parts.bagRight, [{ transform: 'translate(0,0) rotate(0deg)' }, { transform: 'translate(62px,2px) rotate(20deg)' }], 580);
+          animate(parts.left, [{ transform: 'translate(0,0) rotate(0deg)' }, { transform: 'rotate(20deg)', offset: .35 }, { transform: 'rotate(17deg)' }], 650);
+          animate(parts.right, [{ transform: 'translate(0,0) rotate(0deg)' }, { transform: 'rotate(-20deg)', offset: .35 }, { transform: 'rotate(-17deg)' }], 650);
+          animate(parts.bagLeft, [{ transform: 'translate(0,0) rotate(0deg)' }, { transform: 'translate(-38px,20px) rotate(-14deg)' }], 580);
+          animate(parts.bagRight, [{ transform: 'translate(0,0) rotate(0deg)' }, { transform: 'translate(38px,20px) rotate(14deg)' }], 580);
           animate(parts.print, [{ opacity: 1 }, { opacity: 0 }], 100);
           root.querySelectorAll('.actor-spark').forEach((spark, index) => {
             const angle = (index / 12) * Math.PI * 2;
@@ -147,8 +124,8 @@ export function createLiveScene({ container, onCue = () => {} }) {
           animate(parts.card, [{ opacity: 1, transform: 'translate(0,-32px) scale(1)' }, { opacity: 0, transform: 'translate(100px,-55px) scale(.75)' }], 600);
           animate(parts.light, [{ opacity: .85 }, { opacity: 0 }], 400);
           animate(parts.bag, [{ opacity: 1, transform: 'translate(0,0)' }, { opacity: 0, transform: 'translate(15px,90px)' }], 550);
-          animate(parts.left, [{ transform: 'translate(-29px,-7px) rotate(-11deg)' }, { transform: 'translate(0,0) rotate(0)' }], 650);
-          animate(parts.right, [{ transform: 'translate(29px,-7px) rotate(11deg)' }, { transform: 'translate(0,0) rotate(0)' }], 650);
+          animate(parts.left, [{ transform: 'rotate(17deg)' }, { transform: 'translate(0,0) rotate(0)' }], 650);
+          animate(parts.right, [{ transform: 'rotate(-17deg)' }, { transform: 'translate(0,0) rotate(0)' }], 650);
         }
         // A consumer callback cannot strand this scene's playback promise.
         try { onCue(phase, order); } catch (error) { console.error('Live scene cue failed:', error); }
