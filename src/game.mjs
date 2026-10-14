@@ -42,10 +42,11 @@ function record(state, text, type) {
   return [{ text, type }, ...state.history].slice(0, 30);
 }
 
-export function buy(state, seriesId, rng = Math.random) {
+export function buy(state, seriesId, rng = Math.random, boxNumber = state.opened % 6 + 1) {
   if (state.pending) throw new Error('请先处理刚刚开出的藏品。');
   const selected = SERIES.find(entry => entry.id === seriesId);
   if (!selected) throw new Error('没有找到这个盲盒系列。');
+  if (!Number.isInteger(boxNumber) || boxNumber < 1 || boxNumber > 6) throw new Error('请选择 1 到 6 号盲盒。');
   if (state.coins < selected.price) throw new Error(`金币不足，还差 ${selected.price - state.coins} 金币。`);
   const roll = rng();
   if (!Number.isFinite(roll) || roll < 0 || roll >= 1) throw new Error('开盒随机数无效，请重试。');
@@ -54,11 +55,11 @@ export function buy(state, seriesId, rng = Math.random) {
     threshold += RARITIES[entry.rarity].chance;
     return roll < threshold / 100;
   });
-  const pending = { id: `box-${state.opened + 1}`, itemId: item.id, seriesId: selected.id };
+  const pending = { id: `box-${state.opened + 1}`, itemId: item.id, seriesId: selected.id, boxNumber };
   return {
     ...state, coins: state.coins - selected.price, pending, opened: state.opened + 1,
     discovered: state.discovered.includes(item.id) ? [...state.discovered] : [...state.discovered, item.id],
-    history: record(state, `购买「${selected.name}」，开出${item.name}`, 'buy'),
+    history: record(state, `购买「${selected.name}」${boxNumber}号盒，开出${item.name}`, 'buy'),
   };
 }
 
@@ -117,7 +118,8 @@ export function hydrate(raw) {
     const selected = SERIES.find(option => option.id === entry.seriesId);
     if (!Number.isSafeInteger(serial) || serial > raw.opened || ids.has(entry.id) || !selected || !selected.items.some(item => item.id === entry.itemId) || !raw.discovered.includes(entry.itemId)) invalid();
     ids.add(entry.id);
-    return { id: entry.id, itemId: entry.itemId, seriesId: entry.seriesId };
+    if (entry.boxNumber !== undefined && (!Number.isInteger(entry.boxNumber) || entry.boxNumber < 1 || entry.boxNumber > 6)) invalid();
+    return { id: entry.id, itemId: entry.itemId, seriesId: entry.seriesId, ...(entry.boxNumber === undefined ? {} : { boxNumber: entry.boxNumber }) };
   }
   const inventory = raw.inventory.map(instance);
   const pending = raw.pending === null ? null : instance(raw.pending);

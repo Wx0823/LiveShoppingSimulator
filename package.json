@@ -1,6 +1,6 @@
 {
   "name": "live-shopping-simulator",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "拆播间 - 横屏单机潮玩直播购物模拟器",
   "main": "desktop/main.cjs",
@@ -11,7 +11,8 @@
     "test": "node --test tests/*.test.mjs",
     "test:ui": "node tests/browser-smoke.mjs",
     "test:desktop": "node tests/desktop-smoke.mjs",
-    "package": "node scripts/package.mjs"
+    "package": "node scripts/package.mjs",
+    "test:unboxing": "node tests/unboxing-smoke.mjs"
   },
   "devDependencies": {
     "@electron/packager": "18.3.6",

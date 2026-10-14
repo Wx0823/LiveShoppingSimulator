@@ -1,0 +1,37 @@
+.reel-stage { --reel-card-width: 145px; --reel-card-height: 190px; position: relative; overflow: hidden; padding: 28px 0 22px; color: #f8efdb; background: radial-gradient(ellipse at 50% 22%, #315b51 0, #193d34 46%, #102b26 100%); border: 1px solid #d7bc803b; border-radius: 18px; isolation: isolate; }
+.reel-stage::before { content: ''; position: absolute; inset: 0; z-index: -1; opacity: .24; background-image: radial-gradient(#f5dc9a 0.6px, transparent .8px); background-size: 22px 22px; mask-image: linear-gradient(#000, transparent 78%); }
+.reel-guide { text-align: center; font-size: 10px; letter-spacing: .3em; font-weight: 700; color: #cebc91; margin-bottom: 26px; }
+.reel-viewport { position: relative; height: calc(var(--reel-card-height) + 42px); overflow: hidden; }
+.reel-viewport::before, .reel-viewport::after { content: ''; position: absolute; z-index: 3; top: 0; bottom: 0; width: 15%; pointer-events: none; }
+.reel-viewport::before { left: 0; background: linear-gradient(90deg, #15352e, #15352e00); }
+.reel-viewport::after { right: 0; background: linear-gradient(270deg, #15352e, #15352e00); }
+.reel-track { position: absolute; left: 0; top: 20px; display: flex; gap: 12px; width: max-content; will-change: transform; }
+.reel-card { box-sizing: border-box; flex: 0 0 var(--reel-card-width); width: var(--reel-card-width); height: var(--reel-card-height); position: relative; display: flex; align-items: center; flex-direction: column; border: 1px solid #ffffff19; border-bottom: 4px solid var(--reel-rarity); border-radius: 11px; background: linear-gradient(160deg, #ffffff12, #ffffff04), #21443a; box-shadow: 0 8px 20px #061d2826; transition: background .25s, box-shadow .25s, border-color .25s; }
+.reel-rarity { position: absolute; left: 10px; top: 9px; font-size: 10px; letter-spacing: .12em; color: var(--reel-rarity); }
+.reel-art { width: 138px; height: 145px; padding-top: 12px; box-sizing: border-box; }
+.reel-art svg { display: block; width: 100%; height: 100%; }
+.reel-name { font-size: 13px; color: #f6f0e0; font-weight: 600; padding: 9px 2px 0; white-space: nowrap; }
+.reel-marker { position: absolute; z-index: 4; width: 2px; top: 7px; bottom: 5px; left: 50%; transform: translateX(-50%); background: linear-gradient(#f7dc91b3, #f7dc9110 40%, #f7dc9110 70%, #f7dc91b3); box-shadow: 0 0 15px #f5d78e28; pointer-events: none; }
+.reel-marker::before, .reel-marker::after { content: ''; position: absolute; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 9px solid transparent; border-right: 9px solid transparent; }
+.reel-marker::before { top: -6px; border-top: 13px solid #f6dda3; filter: drop-shadow(0 2px 5px #0008); }
+.reel-marker::after { bottom: -6px; border-bottom: 10px solid #f6dda3; }
+.reel-caption { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 20px 30px 0; }
+.reel-status { font-size: 17px; font-weight: 600; margin: 0; letter-spacing: .03em; }
+.reel-stage .reel-skip { color: #ddd3b9; border: 1px solid #cfbe914d; background: #f8eccb0a; border-radius: 7px; padding: 8px 14px; font-size: 12px; cursor: pointer; white-space: nowrap; }
+.reel-stage .reel-skip:hover:not(:disabled) { background: #f8eccb1f; border-color: #e5c68a; }
+.reel-stage .reel-skip:focus-visible { outline: 2px solid #f6dda3; outline-offset: 3px; }
+.reel-stage .reel-skip:disabled { opacity: .55; cursor: default; }
+.reel-hint { margin: 8px 30px 0; color: #a4b5a7; font-size: 11px; }
+.reel-winner { background: radial-gradient(ellipse at 50% 45%, #f9e5b331, transparent 85%), #35594a; border-color: #efce8f; border-bottom-color: var(--reel-rarity); box-shadow: 0 0 0 1px #f4dca566, 0 0 30px #ebcb8c45; }
+.reel-revealed .reel-status { color: #f6dda3; }
+.reel-revealed .reel-card:not(.reel-winner) { opacity: .48; }
+@media (max-height: 800px), (max-width: 1350px) {
+  .reel-stage { --reel-card-width: 125px; --reel-card-height: 158px; padding-top: 20px; padding-bottom: 16px; }
+  .reel-guide { margin-bottom: 15px; }
+  .reel-art { width: 116px; height: 118px; padding-top: 12px; }
+  .reel-name { font-size: 12px; padding-top: 8px; }
+  .reel-caption { padding: 13px 24px 0; }
+  .reel-status { font-size: 15px; }
+  .reel-hint { margin-left: 24px; }
+}
+@media (prefers-reduced-motion: reduce) { .reel-card { transition: none; } }

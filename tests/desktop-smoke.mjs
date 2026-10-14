@@ -32,11 +32,28 @@ try {
   await page.waitForSelector('.empty-state');
   saved = JSON.parse(await fs.readFile(savePath, 'utf8'));
   assert.equal(saved.coins, 2000); assert.equal(saved.inventory.length, 0);
+  await page.locator('[data-action="close"]').first().click();
+  const backgroundLoaded = await page.evaluate(() => new Promise(resolve => {
+    const image = new Image();
+    image.onload = () => resolve(image.naturalWidth > 0);
+    image.onerror = () => resolve(false);
+    image.src = new URL('assets/studio-unboxing.png', location.href).href;
+  }));
+  assert.equal(backgroundLoaded, true, 'Packaged workstation art is available');
+  await page.locator('[data-box="5"]').click();
+  await page.locator('#buy').click();
+  await page.waitForSelector('[data-action="keep-result"]');
+  saved = JSON.parse(await fs.readFile(savePath, 'utf8'));
+  assert.equal(saved.pending.boxNumber, 5); assert.equal(saved.opened, 2); assert.equal(saved.coins, 1900);
+  await page.locator('[data-action="keep-result"]').click();
+  await page.waitForFunction(() => !document.querySelector('#modal').open);
+  saved = JSON.parse(await fs.readFile(savePath, 'utf8'));
+  assert.equal(saved.inventory[0].boxNumber, 5);
   const second = spawn(executablePath, args, { env, windowsHide: true, stdio: 'ignore' });
   const exitCode = await Promise.race([
     new Promise(resolve => second.once('exit', resolve)),
     new Promise((_, reject) => { const timer = setTimeout(() => { second.kill(); reject(new Error('Second instance did not exit')); }, 10000); timer.unref(); })
   ]);
   assert.equal(exitCode, 0);
-  console.log('PASS: Electron launch, isolated preload, pending recovery, native save, reload, inventory sale, single-instance lock.');
+  console.log('PASS: Electron launch, isolated preload, pending recovery, native save, reload, inventory sale, packaged art, numbered purchase/reveal, single-instance lock.');
 } finally { await app.close(); }

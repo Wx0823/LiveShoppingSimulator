@@ -138,3 +138,27 @@ test('history stays bounded and sold-item IDs are never reused', () => {
   assert.equal(state.sold, 40);
   assert.deepEqual(hydrate(state), state);
 });
+
+test('chosen box numbers survive saving and do not affect award probabilities', () => {
+  for (let number = 1; number <= 6; number++) {
+    const state = buy(createGame(), 'forest', () => .9, number);
+    assert.equal(state.pending.boxNumber, number);
+    assert.equal(state.pending.itemId, 'forest-epic');
+    assert.equal(hydrate(state).pending.boxNumber, number);
+    assert.equal(hydrate(settle(state, 'keep')).inventory[0].boxNumber, number);
+  }
+  for (const number of [0, 7, -1, 1.2, '3', null]) {
+    assert.throws(() => buy(createGame(), 'street', () => 0, number), /1 到 6/);
+  }
+});
+
+test('v0.1 pending orders without a box number remain readable', () => {
+  const legacy = buy(createGame(), 'street', () => .99);
+  delete legacy.pending.boxNumber;
+  const restored = hydrate(legacy);
+  assert.equal(restored.pending.itemId, 'street-legendary');
+  assert.equal(settle(restored, 'sell').coins, 2000);
+  const broken = buy(createGame(), 'street', () => 0);
+  broken.pending.boxNumber = 9;
+  assert.throws(() => hydrate(broken), /存档数据/);
+});
