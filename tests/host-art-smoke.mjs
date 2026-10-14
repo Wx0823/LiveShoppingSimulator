@@ -33,7 +33,7 @@ async function armSnapshot(phase) {
     const [pivotX, pivotY] = style.transformOrigin.split(' ').map(Number.parseFloat);
     const shoulder = new DOMPoint(pivotX, pivotY).matrixTransform(arm.getScreenCTM());
     // Points are the pinch fingertips in the cropped artwork, before its fixed pose rotation.
-    const fingertip = new DOMPoint(index === 0 ? 276 : 265, index === 0 ? 268 : 266).matrixTransform(arm.querySelector('g').getScreenCTM());
+    const fingertip = new DOMPoint(index === 0 ? 271 : 273.2, 250.2).matrixTransform(arm.querySelector('g').getScreenCTM());
     return { x: fingertip.x, y: fingertip.y, shoulder: { x: shoulder.x, y: shoulder.y }, angle: Math.atan2(matrix.b, matrix.a) };
   }));
 }
@@ -73,6 +73,14 @@ try {
   assert.ok(atlas.transparent > atlas.total * .1, 'atlas has real transparent background pixels');
   assert.ok(atlas.opaque > atlas.total * .05, 'atlas contains visible nearly opaque character artwork');
   assert.ok(atlas.partial > 0, 'character edges retain alpha antialiasing');
+
+  const layerScales = await page.evaluate(() => ['.actor-portrait', '.actor-arm-left', '.actor-arm-right'].map(selector => {
+    const viewport = document.querySelector(`${selector} svg`);
+    return { x: viewport.width.baseVal.value / viewport.viewBox.baseVal.width,
+      y: viewport.height.baseVal.value / viewport.viewBox.baseVal.height };
+  }));
+  for (const scale of layerScales) assert.ok(Math.abs(scale.x - scale.y) < .001, 'body and arm textures keep their natural aspect ratio');
+  for (const arm of layerScales.slice(1)) assert.ok(arm.x / layerScales[0].x >= .85 && arm.x / layerScales[0].x <= 1.15, 'arm artwork stays at the same visual scale as the torso, avoiding miniature hands');
 
   const grip = await armSnapshot('grip');
   await page.screenshot({ path: 'artifacts/host-art-grip.png' });

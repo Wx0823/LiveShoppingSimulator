@@ -4,8 +4,8 @@
 .actor-figure{animation:actor-breathe 3.6s ease-in-out infinite;transform-origin:270px 440px;transform-box:view-box}
 .actor-head{animation:actor-head-sway 5.8s ease-in-out infinite;transform-origin:270px 224px;transform-box:view-box}
 .actor-eyes{animation:actor-blink 5.1s linear infinite;transform-origin:270px 153px;transform-box:view-box}
-.actor-arm{transform-box:view-box}.actor-arm-left{transform-origin:142px 220px}.actor-arm-right{transform-origin:398px 220px}
-.actor-hand{transform-box:view-box}.actor-hand-left{transform-origin:142px 220px}.actor-hand-right{transform-origin:398px 220px}
+.actor-arm{transform-box:view-box}.actor-arm-left{transform-origin:166px 246px}.actor-arm-right{transform-origin:374px 246px}
+.actor-hand{transform-box:view-box}.actor-hand-left{transform-origin:166px 246px}.actor-hand-right{transform-origin:374px 246px}
 .actor-bag-frame{opacity:0;transform-origin:270px 365px;transform-box:view-box}.actor-bag-left{transform-origin:239px 318px;transform-box:view-box}.actor-bag-right{transform-origin:300px 318px;transform-box:view-box}
 .actor-result-card{opacity:0;transform-origin:270px 405px;transform-box:view-box;filter:drop-shadow(0 4px 9px #392a3040)}
 .actor-result-light{opacity:0;transform-origin:270px 300px;transform-box:view-box}.actor-spark{opacity:0;transform-origin:center;transform-box:fill-box}

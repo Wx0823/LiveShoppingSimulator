@@ -4,7 +4,7 @@ import { getItem, SERIES, RARITIES } from './game.mjs';
 let sceneSerial = 0;
 const hostAtlas = new URL('../assets/host-xiaotao-atlas.png', import.meta.url).href;
 // Keep the source atlas intact; SVG viewports select each transparent rigging layer.
-const texture = (viewBox, x, y, width, height) => `<svg x="${x}" y="${y}" width="${width}" height="${height}" viewBox="${viewBox}" preserveAspectRatio="none" overflow="hidden"><image href="${hostAtlas}" x="0" y="0" width="1881" height="836"/></svg>`;
+const texture = (viewBox, x, y, width, height) => `<svg x="${x}" y="${y}" width="${width}" height="${height}" viewBox="${viewBox}" preserveAspectRatio="none" overflow="hidden"><image href="${hostAtlas}" x="0" y="0" width="1882" height="836"/></svg>`;
 const escape = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
 
 /** Presentation only. Cancelling a performance always settles its original promise. */
@@ -24,13 +24,13 @@ export function createLiveScene({ container, onCue = () => {} }) {
     </defs>
     <ellipse cx="284" cy="451" rx="162" ry="16" fill="#45362d" opacity=".16"/>
     <g class="actor-figure actor-portrait" data-testid="actor-portrait">
-      ${texture('112 4 490 828', 145, 12, 250, 426)}
+      ${texture('112 4 490 828', 157.3, 55, 225.4, 380.88)}
     </g>
     <g class="actor-arm actor-arm-left" data-testid="actor-left-arm">
-      <g transform="rotate(25 142 220)">${texture('650 345 590 420', 109, 203, 177, 126)}</g>
+      <g transform="rotate(40 166 246)">${texture('680 345 350 410', 136.6, 222.9, 147, 172.2)}</g>
     </g>
     <g class="actor-arm actor-arm-right" data-testid="actor-right-arm">
-      <g transform="rotate(-25 398 220)">${texture('1285 345 570 420', 260, 203, 171, 126)}</g>
+      <g transform="rotate(-40 374 246)">${texture('1470 345 365 410', 260.6, 222.9, 153.3, 172.2)}</g>
     </g>
     <g class="actor-result-light"><ellipse cx="270" cy="302" rx="180" ry="170" fill="url(#${uid}-glow)"/><path d="M270 162v-25m97 63 19-18m-206 18-19-18m210 121h25m-250 0h-23" stroke="#ffe6a2" stroke-width="5" stroke-linecap="round"/></g>
     <g class="actor-result-card" data-testid="actor-result-card"></g>

@@ -1,13 +1,13 @@
-# 小桃角色贴图 v0.3.1
+# 小桃角色贴图 v0.3.2
 
 - 工具：内置 image_gen.imagegen，透明背景；没有使用 CLI 或外部素材。
-- 保存文件：assets/host-xiaotao-atlas.png（1881×836 RGBA）。
+- 保存文件：assets/host-xiaotao-atlas.png（1882×836 RGBA）。
 - 参考：assets/studio.png 与 assets/studio-unboxing.png 中的原版小桃。
 - 用途：头部/躯干、左臂、右臂的独立贴图，通过 SVG viewport 选取并在肩部旋转。保留原始 alpha，不重新抠图。
 - 集成：src/live-scene.mjs。人物保留细腻脸部、发丝、棉质卫衣和围裙，配合呼吸、接袋、撕袋、卡牌与纸屑效果。
 - 检查：PNG 实际透明通道、三种横屏尺寸、双臂动作与订单流程。
 
-## 最终采用素材的提示词
+## 原始角色素材提示词
 
 ```text
 Use case: stylized-concept
@@ -20,4 +20,16 @@ MIDDLE COLUMN: only the matching arm belonging to the LEFT side of the displayed
 RIGHT COLUMN: matching arm belonging to the RIGHT side of the displayed character, mirrored pose. Shoulder upper right, elbow lower right, forearm inward to the left, pinching fingers at far left. Complete rounded sleeve cap.
 Body column fills most of its height; two arm columns have identical scale to the body, aligned around the middle/lower part of the canvas with room around them. These are separate rigging pieces, never touching one another. Arms have correct elegant adult human proportions and five fingers. Matching light from upper left across all pieces.
 Background: actual transparent alpha, not a checkerboard. No table, no bag, no toy, no text, no watermark, no background, no detached extra fingers. Preserve the reference's appealing character quality above all.
+```
+
+
+## v0.3.2 比例与姿势修正
+
+采用同次内置 imagegen 生成的弯臂修订素材，保留人物主体。身体从约 0.51 缩为 0.46，双臂由 0.30 放大为 0.42，保持各自等比。肩部锚点为 (166,246) 与 (374,246)。运行时使用 SVG viewport 选取三个区域，不修改贴图像素。
+
+修订提示词：
+
+```text
+Use case: precise-object-edit
+Edit target: this transparent character puppet atlas. Keep the LEFT character head and torso EXACTLY unchanged, same beautiful face, hair, clothing, silhouette, scale, placement and lighting. Preserve genuine transparency. Modify ONLY the two detached arms: make both much more compact bent-arm poses, with the forearms angling steeply upward and inward, bringing each pinching hand close to its own shoulder horizontally. The current very long horizontally extended forearms are wrong for the rig. Each arm's opaque bounding box must be approximately 300 pixels wide and 395 pixels tall on this same 1881x836 canvas (current arms are about550 wide). Left-side arm stays in middle column: shoulder near(750,370), elbow near(720,710), pinching fingertips near(960,550). Right-side arm stays in right column: shoulder near(1750,370), elbow near(1780,710), pinching fingertips near(1540,550). Upper arms and forearms look anatomically natural, simply bend the elbows more acutely rather than stretching or shrinking body parts. Matching orange hoodie sleeves rolled at wrist, delicate detailed hands. Preserve soft 3D texture lighting rendering. No new objects, no text, no bag, no table, no background. Do not change the base body at all.
 ```
