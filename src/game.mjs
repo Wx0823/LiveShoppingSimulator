@@ -13,7 +13,7 @@ function series(id, name, subtitle, price, color, names, values, kinds) {
   }))) });
 }
 
-export const SERIES = Object.freeze([
+export const LEGACY_SERIES = Object.freeze([
   series('street', '街角漫游', '把城市里的小确幸带回家', 100, '#f2af91',
     ['咖啡小熊', '滑板企鹅', '霓虹独角兽', '金色宇航员'], [45, 100, 240, 900],
     ['bear', 'penguin', 'unicorn', 'astronaut']),
@@ -25,10 +25,89 @@ export const SERIES = Object.freeze([
     ['rabbit', 'cat', 'robot', 'traveler']),
 ]);
 
-const allItems = new Map(SERIES.flatMap(entry => entry.items.map(item => [item.id, item])));
+const GENERAL_ROSTERS = {
+  wei: [
+    ['cao-hong', '曹洪', 'common', '护主骁骑', '长枪挑开夜色，铁骑护住归途。'],
+    ['wen-pin', '文聘', 'common', '江夏坚盾', '江风十年不改，守城一诺如山。'],
+    ['li-dian', '李典', 'common', '博学儒将', '胸中藏万卷，临阵定千军。'],
+    ['yue-jin', '乐进', 'common', '先登破阵', '旌旗未落，先登之锋已至。'],
+    ['yu-jin', '于禁', 'common', '肃军名将', '鼓令一声，万甲如林。'],
+    ['pang-de', '庞德', 'common', '白马烈将', '白马踏霜，丹心映刃。'],
+    ['xu-chu', '许褚', 'rare', '虎痴雄卫', '双肩擎山岳，一身挡风雷。'],
+    ['xiahou-yuan', '夏侯渊', 'rare', '疾行神弓', '箭越千峰，骑行如电。'],
+    ['xu-huang', '徐晃', 'rare', '长驱战斧', '巨斧落处，尘烟让出前路。'],
+    ['zhang-he', '张郃', 'rare', '巧变名将', '风移阵转，锋芒藏于从容。'],
+    ['cao-ren', '曹仁', 'rare', '铁壁将军', '孤城灯火不灭，铁壁寸土不让。'],
+    ['xiahou-dun', '夏侯惇', 'epic', '独眼苍狼', '独目照寒锋，战意不曾退。'],
+    ['zhang-liao', '张辽', 'epic', '威震逍遥', '一骑破晓，雷鸣动江东。'],
+    ['dian-wei', '典韦', 'epic', '古之恶来', '双戟横关，万夫莫开。'],
+    ['cao-cao', '曹操', 'legendary', '魏武雄心', '执剑问山河，星汉入胸襟。'],
+  ],
+  shu: [
+    ['guan-ping', '关平', 'common', '龙骧少将', '承青龙之志，守少年之锋。'],
+    ['zhou-cang', '周仓', 'common', '赤胆随行', '步履踏千里，忠义随刀光。'],
+    ['ma-dai', '马岱', 'common', '西凉骁骑', '黄沙漫长道，银枪护蜀关。'],
+    ['wang-ping', '王平', 'common', '山阵坚守', '静听山风起，列阵寸步坚。'],
+    ['liao-hua', '廖化', 'common', '百战归心', '霜染征衣，初心仍如新刃。'],
+    ['zhang-bao', '张苞', 'common', '虎啸新锋', '少年一声喝，群山应战鼓。'],
+    ['liu-bei', '刘备', 'rare', '仁德昭烈', '双剑映仁心，远路聚同袍。'],
+    ['huang-zhong', '黄忠', 'rare', '定军神射', '弦满如月，白发亦追风。'],
+    ['wei-yan', '魏延', 'rare', '汉中孤锋', '险道生奇兵，长刀照雄关。'],
+    ['jiang-wei', '姜维', 'rare', '天水麒麟', '一枪承壮志，星火越祁山。'],
+    ['guan-xing', '关兴', 'rare', '青龙继志', '旗上青龙舞，胸中壮志长。'],
+    ['zhao-yun', '赵云', 'epic', '常山银龙', '银枪穿乱云，白马载孤勇。'],
+    ['zhang-fei', '张飞', 'epic', '长坂雷霆', '丈八蛇矛立，桥前雷声起。'],
+    ['ma-chao', '马超', 'epic', '锦衣飞骑', '锦袍卷风雪，铁骑耀西凉。'],
+    ['guan-yu', '关羽', 'legendary', '武圣青龙', '丹心悬日月，长刀镇乾坤。'],
+  ],
+  wu: [
+    ['cheng-pu', '程普', 'common', '江东老将', '岁月磨铁脊，江潮识战旗。'],
+    ['han-dang', '韩当', 'common', '横江劲弓', '强弓指远岸，战鼓渡长江。'],
+    ['jiang-qin', '蒋钦', 'common', '破浪水师', '帆影穿风雨，水师斩怒涛。'],
+    ['ling-tong', '凌统', 'common', '烈胆先锋', '轻骑迎矢雨，热血照征途。'],
+    ['ding-feng', '丁奉', 'common', '雪中短兵', '踏雪收长刃，近锋决胜机。'],
+    ['xu-sheng', '徐盛', 'common', '疑城铁卫', '江畔千灯起，疑城退雄兵。'],
+    ['sun-quan', '孙权', 'rare', '碧眼江主', '凭栏望江月，掌中定江东。'],
+    ['lu-meng', '吕蒙', 'rare', '白衣渡江', '书卷藏锋锐，白衣渡暮江。'],
+    ['gan-ning', '甘宁', 'rare', '锦帆夜袭', '铃响寒江夜，锦帆破重围。'],
+    ['huang-gai', '黄盖', 'rare', '赤壁薪火', '一炬托孤勇，满江燃壮怀。'],
+    ['zhou-tai', '周泰', 'rare', '不屈铁躯', '伤痕刻勋名，铁躯护战旗。'],
+    ['sun-ce', '孙策', 'epic', '江东小霸王', '长枪挑落日，少年定江东。'],
+    ['lu-xun', '陆逊', 'epic', '儒冠焚营', '羽扇引东风，书生掌烈焰。'],
+    ['taishi-ci', '太史慈', 'epic', '弦惊北海', '双戟映苍穹，弓弦应豪气。'],
+    ['zhou-yu', '周瑜', 'legendary', '赤壁都督', '琴心听江潮，羽扇卷赤焰。'],
+  ],
+};
+
+function generalSeries(id, name, subtitle, price, color, values, emblem) {
+  return Object.freeze({ id, faction: id, name, subtitle, price, color, emblem,
+    items: Object.freeze(GENERAL_ROSTERS[id].map(([slug, name, rarity, title, flavor], index) => Object.freeze({
+      id: `${id}-${slug}`, faction: id, portraitSlug: slug, name, title, flavor, number: index + 1,
+      cardCode: `${id.toUpperCase()}-${String(index + 1).padStart(3, '0')}`, rarity,
+      value: values[rarityKeys.indexOf(rarity)], color: RARITIES[rarity].color, kind: 'general',
+    }))),
+  });
+}
+
+export const SERIES = Object.freeze([
+  generalSeries('wei', '魏 · 玄武雄图', '玄甲列阵 · 魏武山河', 100, '#45627e', [45, 100, 240, 900], '玄武'),
+  generalSeries('shu', '蜀 · 青龙义誓', '青锋映月 · 蜀汉群英', 260, '#427f62', [110, 260, 650, 2000], '青龙'),
+  generalSeries('wu', '吴 · 赤虎江潮', '赤帆逐浪 · 江东豪杰', 600, '#b75c43', [250, 600, 1500, 5000], '赤虎'),
+]);
+
+const allSeries = [...SERIES, ...LEGACY_SERIES];
+const allItems = new Map(allSeries.flatMap(entry => entry.items.map(item => [item.id, item])));
 const safeInt = value => Number.isSafeInteger(value) && value >= 0;
 
 export function getItem(id) { return allItems.get(id); }
+export function getSeries(id) { return allSeries.find(entry => entry.id === id); }
+export function itemProbability(seriesOrId, itemOrId) {
+  const selected = typeof seriesOrId === 'string' ? getSeries(seriesOrId) : seriesOrId;
+  const itemId = typeof itemOrId === 'string' ? itemOrId : itemOrId?.id;
+  const item = selected?.items.find(entry => entry.id === itemId);
+  if (!item) return 0;
+  return RARITIES[item.rarity].chance / selected.items.filter(entry => entry.rarity === item.rarity).length;
+}
 
 export function createGame() {
   return {
@@ -52,9 +131,9 @@ export function buy(state, seriesId, rng = Math.random, boxNumber = state.opened
   if (!Number.isFinite(roll) || roll < 0 || roll >= 1) throw new Error('开盒随机数无效，请重试。');
   let threshold = 0;
   const item = selected.items.find(entry => {
-    threshold += RARITIES[entry.rarity].chance;
+    threshold += itemProbability(selected, entry);
     return roll < threshold / 100;
-  });
+  }) ?? selected.items.at(-1);
   const pending = { id: `box-${state.opened + 1}`, itemId: item.id, seriesId: selected.id, boxNumber };
   return {
     ...state, coins: state.coins - selected.price, pending, opened: state.opened + 1,
@@ -141,7 +220,7 @@ export function hydrate(raw) {
   function instance(entry) {
     if (!entry || typeof entry !== 'object' || typeof entry.id !== 'string' || !/^box-[1-9]\d*$/.test(entry.id)) invalid();
     const serial = Number(entry.id.slice(4));
-    const selected = SERIES.find(option => option.id === entry.seriesId);
+    const selected = getSeries(entry.seriesId);
     if (!Number.isSafeInteger(serial) || serial > raw.opened || ids.has(entry.id) || !selected || !selected.items.some(item => item.id === entry.itemId) || !raw.discovered.includes(entry.itemId)) invalid();
     ids.add(entry.id);
     if (entry.boxNumber !== undefined && (!Number.isInteger(entry.boxNumber) || entry.boxNumber < 1 || entry.boxNumber > 6)) invalid();

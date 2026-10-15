@@ -55,7 +55,7 @@ function motionAt(time) {
 }
 
 /** Animate a saved award, never draw an award. Resolves after the winning card is revealed. */
-export function playReel({ container, items, winnerId, seed, fast = false, reducedMotion = false, onTick = () => {}, onPhase = () => {} }) {
+export function playReel({ container, items, winnerId, seed, packMarkup = '', fast = false, reducedMotion = false, onTick = () => {}, onPhase = () => {} }) {
   const reel = buildReel(items, winnerId, seed);
   const document = container.ownerDocument;
   const window = document.defaultView;
@@ -74,7 +74,7 @@ export function playReel({ container, items, winnerId, seed, fast = false, reduc
   const track = element('div', 'reel-track');
   track.setAttribute('aria-hidden', 'true');
   const cards = reel.items.map((item, index) => {
-    const card = element('div', 'reel-card');
+    const card = element('div', 'reel-card' + (item.kind === 'general' ? ' reel-general' : ''));
     card.dataset.index = String(index);
     card.style.setProperty('--reel-rarity', RARITIES[item.rarity].color);
     const rarity = element('span', 'reel-rarity', RARITIES[item.rarity].name);
@@ -95,6 +95,7 @@ export function playReel({ container, items, winnerId, seed, fast = false, reduc
   skip.type = 'button';
   caption.append(status, skip);
   const seal = element('div', 'reel-seal', '✦');
+  if (packMarkup) { seal.innerHTML = packMarkup; seal.classList.add('reel-pack-seal'); }
   seal.setAttribute('aria-hidden', 'true');
   root.append(element('div', 'reel-guide', 'YOUR NEXT COLLECTIBLE'), viewport, seal, caption, hint);
   container.replaceChildren(root);

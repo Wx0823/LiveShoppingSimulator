@@ -1,0 +1,59 @@
+/* Three Kingdoms artwork is shared by the shop, tabletop, reel and collection. */
+.pack-art,.card-art { display:block; max-width:100%; }
+.series-select .pack-art { width:35%; height:100%; max-height:138px; flex-shrink:0; margin-right:8px; }
+.queue-package { width:88%; height:clamp(76px,12.3vh,240px); background:none; border:0; border-radius:0; box-shadow:none; }
+.queue-package::before { display:none; }
+.queue-package .pack-art { height:100%; width:100%; overflow:visible; filter:drop-shadow(3px 5px 3px #30271955); }
+.queue-package .queue-number { position:absolute; right:7%; bottom:7%; background:#182b32e8; border:1px solid #ddc087; border-radius:50%; width:clamp(16px,1.45vw,42px); height:clamp(16px,1.45vw,42px); display:grid; place-items:center; font:600 clamp(9px,.8vw,22px) Georgia; color:#fff1c9; text-shadow:none; }
+.queue-package::after { top:1%; left:10%; right:10%; height:5%; background:linear-gradient(90deg,#b99553,var(--parcel),#e8ca88); border:0; box-shadow:0 1px #f9e2af88; }
+#queue-list:is([data-phase="tear"],[data-phase="reveal"]) .is-opening .queue-package { box-shadow:none; }
+.gift-preview-dialog,.card-library-dialog { width:min(1060px,92vw); }
+.gift-preview-grid,.card-library-dialog .item-grid { grid-template-columns:repeat(5,minmax(0,1fr)); gap:12px; }
+.gift-preview-card { padding:10px 7px; border-radius:10px; }
+.card-inspect { display:block; width:100%; padding:0; background:none; border:0; cursor:zoom-in; border-radius:9px; }
+.card-inspect:hover { filter:brightness(1.06); }
+.gift-preview-card .card-art,.card-library-dialog .card-art { width:100%; height:auto; max-height:260px; margin:auto; }
+.gift-preview-card h3 { font-size:13px; margin:8px 0 4px; }
+.gift-preview-card h3 .rarity { font-size:10px; margin-left:3px; }
+.gift-probability { font-size:10px; margin:5px 0; }
+.gift-probability b { font-size:17px; margin-left:2px; }
+.gift-value { font-size:10px; }
+.card-pagination { display:flex; justify-content:center; align-items:center; gap:24px; margin:16px 0 0; }
+.card-pagination button,.collection-tabs button,.card-flip-button { padding:8px 15px; border:1px solid #cbd7c8; background:#f1f4e9; color:#416a58; border-radius:7px; font-size:12px; }
+.card-pagination button:disabled { opacity:.4; cursor:default; }
+.card-pagination span { font-size:12px; min-width:40px; text-align:center; }
+.collection-tabs { display:flex; gap:8px; margin:0 0 16px; }
+.collection-tabs button[aria-pressed="true"] { color:#fff4d6; background:#345c50; border-color:#345c50; }
+.card-library-dialog .item-card { padding:10px; }
+.card-library-dialog .item-card h3 { margin:7px 0; }
+.card-library-dialog .item-card .card-inspect { border:0; background:none; padding:0; }
+.card-library-dialog .item-card.locked .card-inspect { opacity:.65; filter:saturate(.45); }
+.card-detail-dialog { width:min(770px,90vw); }
+.card-detail { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:30px; align-items:center; }
+.detail-art { display:flex; justify-content:center; }
+.detail-art .card-art { width:auto; max-height:min(55vh,430px); }
+.detail-copy h3 { margin:15px 0; font-size:25px; }
+.detail-copy p { font-size:13px; line-height:1.9; color:#7b886e; }
+.detail-copy button { display:block; width:100%; margin-top:14px; }
+.result-art:has(.card-art) { height:auto; }
+.result-art .card-art { width:auto; height:min(35vh,310px); margin:auto; animation:none; }
+.result-panel .card-flip-button { display:block; margin:6px auto 9px; padding:5px 14px; }
+.reel-general { height:220px; padding:7px; }
+.reel-general .reel-rarity,.reel-general .reel-name { display:none; }
+.reel-general .reel-art { width:100%; height:100%; }
+.reel-general .card-art { width:100%; height:100%; }
+.reel-pack-seal { background:none; border:0; box-shadow:none; padding:0; width:115px; height:165px; }
+.reel-pack-seal .pack-art { width:100%; height:100%; }
+@media(max-height:800px) {
+  .queue-package { height:76px; }
+  .gift-preview-card .card-art,.card-library-dialog .card-art { max-height:205px; height:auto; }
+  .gift-preview-dialog .modal-header,.card-library-dialog .modal-header { padding:16px 22px; }
+  .gift-preview-dialog .modal-body,.card-library-dialog .modal-body { padding:16px 22px; }
+  .gift-preview-dialog .probability-note { margin:12px 0 0; font-size:10px; }
+  .card-library-dialog .inventory-stats { margin-bottom:12px; }
+  .result-art .card-art { height:210px; }
+  .result-panel { padding:20px 30px; }
+  .result-panel h2 { margin:7px 0; }
+  .result-panel .result-subtitle { margin:8px 0 15px; }
+  .reel-general { height:186px; }
+}

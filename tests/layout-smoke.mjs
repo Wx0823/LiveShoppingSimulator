@@ -47,17 +47,42 @@ try {
     const reveal = await page.locator('.actor-stage').boundingBox();
     assert.ok(Math.abs(reveal.x + reveal.width / 2 - (boxes[0].x + boxes[0].right) / 2) < 3, 'reveal is centered over the rightmost opening box');
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth && document.documentElement.scrollHeight <= innerHeight + 1), 'main interface does not require scrolling');
-    await page.screenshot({ path: `artifacts/v0.4.1-layout-${size.width}.png` });
+    await page.screenshot({ path: `artifacts/v0.5.0-layout-${size.width}.png` });
     for (const series of SERIES) {
       await visibleInsideViewport(`[data-preview="${series.id}"]`, size);
       const before = await snapshot();
       await page.locator(`[data-preview="${series.id}"]`).click();
-      assert.deepEqual(await page.locator('.gift-preview-card').evaluateAll(cards => cards.map(card => card.dataset.rarity)), ['legendary', 'epic', 'rare', 'common']);
-      assert.deepEqual(await page.locator('.gift-probability b').allTextContents(), ['2%', '10%', '28%', '60%']);
-      assert.deepEqual(await page.locator('.gift-preview-card h3').allTextContents(), [...series.items].reverse().map(item => item.name));
-      await visibleInsideViewport('#modal', size);
-      await visibleInsideViewport('#modal [data-action="close"]', size);
-      if (series.id === 'street') await page.screenshot({ path: `artifacts/v0.4.1-preview-${size.width}.png` });
+      const rank = { legendary: 0, epic: 1, rare: 2, common: 3 };
+      const expected = [...series.items].sort((a, b) => rank[a.rarity] - rank[b.rarity]);
+      const seen = [];
+      for (let currentPage = 0; currentPage < 3; currentPage++) {
+        const ids = await page.locator('.gift-preview-card').evaluateAll(cards => cards.map(card => card.dataset.itemId));
+        assert.equal(ids.length, 5);
+        const loaded = await page.locator('.gift-preview-card image').evaluateAll(async nodes => Promise.all(nodes.map(async node => {
+          const image = new Image(); image.src = node.getAttribute('href'); await image.decode();
+          return { width: image.naturalWidth, source: image.src };
+        })));
+        assert.equal(loaded.length, 5);
+        assert.ok(loaded.every(image => image.width >= 100 && image.source.includes('/runtime/')), 'every visible preview card loads its runtime texture');
+        seen.push(...ids);
+        assert.deepEqual(ids, expected.slice(currentPage * 5, currentPage * 5 + 5).map(item => item.id));
+        const chances = await page.locator('.gift-probability b').allTextContents();
+        chances.forEach((text, i) => {
+          const item = expected[currentPage * 5 + i];
+          const count = series.items.filter(other => other.rarity === item.rarity).length;
+          const chance = ({ legendary: 2, epic: 10, rare: 28, common: 60 })[item.rarity] / count;
+          assert.ok(Math.abs(parseFloat(text) - chance) < .0001);
+        });
+        await visibleInsideViewport('#modal', size);
+        await visibleInsideViewport('#modal [data-action="close"]', size);
+        await visibleInsideViewport('[data-action="preview-next"]', size);
+        await visibleInsideViewport('[data-action="preview-prev"]', size);
+        assert.ok(await page.locator('#modal .modal-body').evaluate(element => element.scrollHeight <= element.clientHeight + 1 && element.scrollWidth <= element.clientWidth + 1), 'all five card fronts and probabilities fit without an internal scrollbar');
+        if (series.id === 'wei') await page.screenshot({ path: `artifacts/v0.5.0-preview-${size.width}-${currentPage + 1}.png` });
+        if (currentPage < 2) await page.locator('[data-action="preview-next"]').click();
+      }
+      assert.equal(new Set(seen).size, 15);
+      assert.equal(await page.locator('[data-action="preview-next"]').isDisabled(), true);
       await page.locator('#modal [data-action="close"]').click();
       assert.deepEqual(await snapshot(), before, 'preview neither buys a box nor changes the selected series');
     }

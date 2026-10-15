@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
 import { mkdir } from 'node:fs/promises';
-import { createGame, getItem } from '../src/game.mjs';
+import { createGame, getItem, getSeries } from '../src/game.mjs';
 
 await mkdir('artifacts', { recursive: true });
 const browser = await chromium.launch({ channel: process.env.BROWSER_CHANNEL || 'msedge', headless: true });
@@ -70,7 +70,7 @@ try {
   await page.waitForSelector('[data-action="sell-result"]');
   assert.deepEqual((await read()).pending, beforeReload, 'Reload during spinning restores exactly the paid award');
   await page.locator('[data-action="sell-result"]').click();
-  assert.equal((await read()).coins, 1100 + getItem(beforeReload.itemId).value);
+  assert.equal((await read()).coins, 1200 - getSeries(beforeReload.seriesId).price + getItem(beforeReload.itemId).value);
 
   await fresh();
   await selectWaitingBox();

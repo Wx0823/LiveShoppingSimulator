@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
 import { mkdir } from 'node:fs/promises';
-import { createGame, buy, tickWatch } from '../src/game.mjs';
+import { createGame, buy, getItem, tickWatch } from '../src/game.mjs';
 
 await mkdir('artifacts', { recursive: true });
 const browser = await chromium.launch({ channel: process.env.BROWSER_CHANNEL || 'msedge', headless: true });
@@ -39,9 +39,9 @@ try {
   await click('[data-sell]');
   current = await save(); assert.equal(current.inventory.length, 0); assert.equal(current.sold, 1); assert.equal(current.discovered.length, 1);
   await click('[data-action="close"]');
-  const pending = buy(initial, 'cosmos', () => .999);
+  const pending = buy(initial, 'wu', () => .999);
   await setSave(pending);
-  assert.equal(await page.locator('.result-panel h2').textContent(), '银河旅人');
+  assert.equal(await page.locator('.result-panel h2').textContent(), getItem(pending.pending.itemId).name);
   await page.reload();
   assert.equal((await save()).pending.itemId, pending.pending.itemId);
   await click('[data-action="sell-result"]');
@@ -53,7 +53,7 @@ try {
   await setSave(poor); await click('#buy');
   assert.equal((await save()).opened, 0);
   assert.ok((await page.locator('#toast').textContent()).includes('金币不足'));
-  await click('#nav-collection'); assert.equal(await page.locator('.item-card').count(), 12);
+  await click('#nav-collection'); assert.equal(await page.locator('.item-card').count(), 5);
   await click('[data-action="close"]');
   await click('#nav-settings'); await click('[data-action="reset-confirm"]'); await click('[data-action="cancel-reset"]');
   assert.equal((await save()).coins, 0);

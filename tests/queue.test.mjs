@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createGame, enqueue, advanceQueue, beginQueuedOpening, readyQueuedOpening, settle, hydrate, getItem, buy } from '../src/game.mjs';
+import { SERIES, createGame, enqueue, advanceQueue, beginQueuedOpening, readyQueuedOpening, settle, hydrate, getItem, buy } from '../src/game.mjs';
 
 const roundTrip = state => hydrate(JSON.parse(JSON.stringify(state)));
 
@@ -8,21 +8,21 @@ test('enqueue charges once and fixes the paid item without revealing it in purch
   const initial = createGame();
   const snapshot = JSON.stringify(initial);
   let rolls = 0;
-  const queued = enqueue(initial, 'forest', () => { rolls++; return .99; }, 5, 3);
+  const queued = enqueue(initial, 'shu', () => { rolls++; return .99; }, 5, 3);
   assert.equal(JSON.stringify(initial), snapshot, 'enqueue is a pure state transition');
   assert.equal(rolls, 1);
   assert.equal(queued.coins, 940);
   assert.equal(queued.opened, 1);
-  assert.deepEqual(queued.pending, { id: 'box-1', itemId: 'forest-legendary', seriesId: 'forest', boxNumber: 5, status: 'queued', queueAhead: 3 });
+  assert.deepEqual(queued.pending, { id: 'box-1', itemId: SERIES[1].items.find(item => item.rarity === 'legendary').id, seriesId: 'shu', boxNumber: 5, status: 'queued', queueAhead: 3 });
   assert.ok(queued.history[0].text.includes('队列'));
   assert.ok(!queued.history[0].text.includes(getItem(queued.pending.itemId).name));
-  assert.throws(() => enqueue(queued, 'street', () => { rolls++; return 0; }), /先处理/);
+  assert.throws(() => enqueue(queued, 'wei', () => { rolls++; return 0; }), /先处理/);
   assert.equal(rolls, 1, 'duplicate purchase must not roll again');
   for (const action of ['keep', 'sell']) assert.throws(() => settle(queued, action), /等待主播/);
 });
 
 test('queue advances one order at a time, never redraws or charges, and settles exactly once', () => {
-  let state = enqueue(createGame(), 'street', () => .9, 2, 3);
+  let state = enqueue(createGame(), 'wei', () => .9, 2, 3);
   const itemId = state.pending.itemId;
   for (const remaining of [2, 1, 0]) {
     const before = JSON.stringify(state);
@@ -44,7 +44,7 @@ test('queue advances one order at a time, never redraws or charges, and settles 
   state = readyQueuedOpening(state);
   assert.equal(state.pending.status, 'ready');
   const kept = settle(state, 'keep');
-  assert.deepEqual(kept.inventory, [{ id: 'box-1', itemId, seriesId: 'street', boxNumber: 2 }]);
+  assert.deepEqual(kept.inventory, [{ id: 'box-1', itemId, seriesId: 'wei', boxNumber: 2 }]);
   assert.equal(kept.coins, 1100);
   assert.equal(kept.pending, null);
   assert.throws(() => settle(kept, 'keep'), /没有等待/);
@@ -55,7 +55,7 @@ test('queue advances one order at a time, never redraws or charges, and settles 
 });
 
 test('save/load preserves paid item, balance, identity and exact queue progress in every phase', () => {
-  let state = enqueue(createGame(), 'cosmos', () => .99, 6, 4);
+  let state = enqueue(createGame(), 'wu', () => .99, 6, 4);
   const itemId = state.pending.itemId;
   for (let ahead = 4; ahead >= 0; ahead--) {
     state = roundTrip(state);
@@ -70,23 +70,23 @@ test('save/load preserves paid item, balance, identity and exact queue progress 
     assert.deepEqual(roundTrip(state), state);
     assert.equal(state.pending.itemId, itemId);
   }
-  assert.deepEqual(roundTrip(settle(state, 'keep')).inventory[0], { id: 'box-1', itemId, seriesId: 'cosmos', boxNumber: 6 });
+  assert.deepEqual(roundTrip(settle(state, 'keep')).inventory[0], { id: 'box-1', itemId, seriesId: 'wu', boxNumber: 6 });
 });
 
 test('invalid positions and impossible saved queue phases are rejected', () => {
   for (const ahead of [-1, 5, .5, NaN, Infinity, '2', null]) {
-    assert.throws(() => enqueue(createGame(), 'street', () => 0, 1, ahead), /排队位置/);
+    assert.throws(() => enqueue(createGame(), 'wei', () => 0, 1, ahead), /排队位置/);
   }
   for (const patch of [
     { status: 'finished' }, { status: null }, { status: '' }, { queueAhead: -1 }, { queueAhead: 5 },
     { queueAhead: .5 }, { queueAhead: '1' }, { queueAhead: null }, { queueAhead: undefined },
     { status: 'opening', queueAhead: 1 }, { status: 'ready', queueAhead: 3 }, { status: undefined, queueAhead: 0 },
   ]) {
-    const state = enqueue(createGame(), 'street', () => 0);
+    const state = enqueue(createGame(), 'wei', () => 0);
     Object.assign(state.pending, patch);
     assert.throws(() => hydrate(state), /存档数据损坏/, JSON.stringify(patch));
   }
-  const zero = enqueue(createGame(), 'street', () => 0, 1, 0);
+  const zero = enqueue(createGame(), 'wei', () => 0, 1, 0);
   assert.equal(beginQueuedOpening(zero).pending.status, 'opening');
 });
 
@@ -100,10 +100,10 @@ test('music settings validate independently and v0.2 settings/pending saves rema
   assert.deepEqual(roundTrip(state).settings, state.settings);
   state.settings.musicVolume = 1;
   assert.deepEqual(roundTrip(state).settings, state.settings);
-  const legacy = buy(createGame(), 'street', () => .65, 3);
+  const legacy = buy(createGame(), 'wei', () => .65, 3);
   legacy.settings = { sound: false, fast: true };
   const restored = roundTrip(legacy);
   assert.deepEqual(restored.settings, { sound: false, fast: true, music: true, musicVolume: .35 });
   assert.deepEqual(restored.pending, legacy.pending);
-  assert.equal(settle(restored, 'keep').inventory[0].itemId, 'street-rare');
+  assert.equal(settle(restored, 'keep').inventory[0].itemId, SERIES[0].items.find(item => item.rarity === 'rare').id);
 });

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
 import { mkdir } from 'node:fs/promises';
-import { createGame, getItem } from '../src/game.mjs';
+import { createGame, getItem, SERIES } from '../src/game.mjs';
 
 await mkdir('artifacts', { recursive: true });
 const browser = await chromium.launch({ channel: process.env.BROWSER_CHANNEL || 'msedge', headless: true });
@@ -51,19 +51,28 @@ try {
   await fresh();
   const chosen = page.locator('.queue-order[data-slot="2"]:not(.is-opening)');
   const boxNumber = Number(await chosen.locator('.queue-package b').textContent());
+  const chosenName = await chosen.locator('.queue-copy strong').textContent();
+  const chosenSeries = SERIES.find(series => series.name === chosenName);
+  assert.ok(chosenSeries, 'selected queue package has a known faction');
   await chosen.click();
+  assert.equal(await page.locator('[data-series][aria-pressed="true"]').getAttribute('data-series'), chosenSeries.id, 'choosing a physical pack synchronizes the shop faction');
   await page.locator('#buy').click();
   await page.waitForSelector('#queue-list .queue-order.mine');
   const queued = await read();
   assert.equal(queued.pending.status, 'queued');
   assert.equal(queued.pending.boxNumber, boxNumber);
-  assert.equal(queued.coins, 1100);
+  assert.equal(queued.pending.seriesId, chosenSeries.id, 'paid faction matches the chosen physical pack');
+  assert.equal(queued.coins, 1200 - chosenSeries.price);
   assert.equal(queued.pending.queueAhead, 2, 'purchased order takes the selected table position');
   assert.equal(await page.locator('.queue-order').count(), 5, 'a paid order replaces its selected box');
   assert.equal(await page.locator('.queue-order.mine').getAttribute('data-slot'), '2');
   assert.equal(await page.locator('#modal').evaluate(dialog => dialog.open), false, 'buying queues the bag before any reel modal');
   assert.ok((await page.locator('#queue-status').innerText()).trim().length > 0);
   assert.equal(await page.locator('#buy').isDisabled(), true);
+  await page.locator('#nav-collection').click();
+  assert.equal(await page.locator('#modal').evaluate(dialog => dialog.open), false, 'pending discovery cannot be inspected before the paid reveal');
+  await page.locator('#nav-bag').click();
+  assert.equal(await page.locator('#modal').evaluate(dialog => dialog.open), false, 'pending order cannot leak through the bag');
   await page.setViewportSize({ width: 1280, height: 720 });
   const mineBounds = await page.locator('#queue-list .queue-order.mine').boundingBox();
   const buyBounds = await page.locator('#buy').boundingBox();
@@ -78,6 +87,7 @@ try {
   assert.equal(await page.locator('.queue-order').count(), 5);
   await page.waitForSelector('.actor-stage[data-player="true"]');
   assert.equal((await read()).pending.status, 'opening');
+  assert.equal(await page.locator('.actor-result-card').getByText(getItem(queued.pending.itemId).name, { exact: true }).count(), 0, 'player tabletop presentation does not expose the fixed award before the reel');
   assert.equal(await page.locator('#modal').evaluate(dialog => dialog.open), false, 'actor opens the player bag before the reel');
   await page.waitForSelector('.reel-track');
   assert.equal((await read()).pending.itemId, queued.pending.itemId);
@@ -88,7 +98,7 @@ try {
   assert.equal(kept.pending, null); assert.equal(kept.inventory.length, 1);
   assert.equal(kept.inventory[0].itemId, queued.pending.itemId);
   assert.equal(kept.inventory[0].boxNumber, boxNumber);
-  assert.equal(kept.coins, 1100); assert.equal(kept.opened, 1);
+  assert.equal(kept.coins, 1200 - chosenSeries.price); assert.equal(kept.opened, 1);
 
   await fresh();
   await page.locator('#buy').click();

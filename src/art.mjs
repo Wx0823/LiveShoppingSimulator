@@ -1,5 +1,34 @@
+import { RARITIES, getSeries } from './game.mjs';
+
 let n = 0;
+const xml = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' }[char]));
+const imageAsset = filename => new URL(`../assets/three-kingdoms/runtime/${filename.replace(/\.png$/, '.webp')}`, import.meta.url).href;
+const FACTIONS = {
+  wei: { name: '魏', subtitle: '玄武雄图', color: '#192d45', foil: '#c9d6df' },
+  shu: { name: '蜀', subtitle: '青龙义誓', color: '#183f32', foil: '#e0c37e' },
+  wu: { name: '吴', subtitle: '赤虎江潮', color: '#612a27', foil: '#e7ad73' },
+};
+
+export function card(item, size = 160, { back = false } = {}) {
+  if (item?.kind !== 'general') return toy(item, size);
+  const id = `card${++n}`;
+  const faction = FACTIONS[item.faction];
+  const rarity = RARITIES[item.rarity];
+  const portrait = imageAsset(`portraits/${item.faction}-${item.portraitSlug}.png`);
+  const frame = `<rect x="2" y="2" width="156" height="220" rx="9" fill="${faction.color}" stroke="${rarity.color}" stroke-width="3"/><rect x="7" y="7" width="146" height="210" rx="6" fill="none" stroke="${faction.foil}" stroke-opacity=".8" stroke-width=".7"/>`;
+  return `<svg class="toy-art card-art${back ? ' card-back' : ''}" width="${size}" height="${size * 1.4}" viewBox="0 0 160 224" role="img" aria-label="${xml(item.name)}${back ? '卡背' : ' · ' + rarity.name}" xmlns="http://www.w3.org/2000/svg"><defs><clipPath id="${id}-clip"><rect x="8" y="8" width="144" height="208" rx="5"/></clipPath><linearGradient id="${id}-shade" x1="0" y1="0" x2="0" y2="1"><stop offset=".45" stop-color="${faction.color}" stop-opacity="0"/><stop offset=".78" stop-color="${faction.color}" stop-opacity=".78"/><stop offset="1" stop-color="${faction.color}"/></linearGradient></defs>${frame}<g clip-path="url(#${id}-clip)"><image href="${back ? imageAsset(`back-${item.faction}.png`) : portrait}" x="8" y="8" width="144" height="208" preserveAspectRatio="xMidYMid slice"/><rect x="8" y="8" width="144" height="208" fill="url(#${id}-shade)"/></g>${back ? `<text x="80" y="33" text-anchor="middle" fill="${faction.foil}" font-size="11" letter-spacing="3" font-family="serif">三 国 群 英</text><text x="80" y="181" text-anchor="middle" fill="${faction.foil}" font-size="13" font-family="serif">${faction.name} · ${faction.subtitle}</text><text x="80" y="197" text-anchor="middle" fill="#fff4d8" font-size="8">${xml(item.name)} · ${item.cardCode}</text><text x="80" y="210" text-anchor="middle" fill="${faction.foil}" font-size="5.4" letter-spacing="1.4">THREE KINGDOMS COLLECTION</text>` : `<path d="M12 9H37V39L24.5 46 12 39Z" fill="${faction.color}" stroke="${faction.foil}" stroke-width=".65"/><text x="24.5" y="31" text-anchor="middle" fill="${faction.foil}" font-size="19" font-family="serif" font-weight="700">${faction.name}</text><rect x="105" y="13" width="40" height="16" rx="8" fill="${faction.color}" fill-opacity=".9" stroke="${rarity.color}" stroke-width=".7"/><text x="125" y="24" text-anchor="middle" fill="${rarity.color}" font-size="8" font-weight="700">${rarity.name}</text><text x="80" y="171" text-anchor="middle" fill="${faction.foil}" font-size="8" letter-spacing="2">${xml(item.title)}</text><text x="80" y="194" text-anchor="middle" fill="#fff8e8" font-size="23" font-family="serif" font-weight="700" letter-spacing="3">${xml(item.name)}</text><path d="M24 202H136" stroke="${faction.foil}" stroke-opacity=".6" stroke-width=".6"/><text x="16" y="213" fill="${faction.foil}" font-size="6.2" letter-spacing=".7">${item.cardCode}</text><text x="144" y="213" text-anchor="end" fill="${faction.foil}" font-size="6.2">${faction.subtitle}</text>`}</svg>`;
+}
+
+export function pack(series, size = 120) {
+  const selected = typeof series === 'string' ? getSeries(series) : series;
+  if (!selected?.faction) return toy(selected?.items?.[0], size);
+  const faction = FACTIONS[selected.faction];
+  const id = `pack${++n}`;
+  return `<svg class="pack-art" width="${size}" height="${size * 1.4}" viewBox="0 0 160 224" role="img" aria-label="${xml(selected.name)}卡包" xmlns="http://www.w3.org/2000/svg"><defs><clipPath id="${id}-clip"><path d="M17 14L140 8V203L17 213Z"/></clipPath><linearGradient id="${id}-foil"><stop stop-color="#fff" stop-opacity=".25"/><stop offset=".35" stop-color="#fff" stop-opacity="0"/><stop offset=".8" stop-color="#fff" stop-opacity=".1"/><stop offset="1" stop-color="#000" stop-opacity=".2"/></linearGradient></defs><ellipse cx="81" cy="216" rx="68" ry="6" fill="#101c1b" opacity=".18"/><path d="M140 8L153 16V210L140 203Z" fill="${faction.color}" stroke="${faction.foil}" stroke-width=".8"/><path d="M17 213L140 203 153 210 29 221Z" fill="${faction.color}"/><g clip-path="url(#${id}-clip)"><image href="${imageAsset(`pack-${selected.faction}.png`)}" x="17" y="8" width="123" height="205" preserveAspectRatio="xMidYMid slice"/><path d="M17 14L140 8V203L17 213Z" fill="url(#${id}-foil)"/></g><path d="M17 14L140 8V203L17 213Z" fill="none" stroke="${faction.foil}" stroke-width="1.3"/><path d="M17 14L140 8V20L17 26ZM17 201L140 191V203L17 213Z" fill="${faction.color}" stroke="${faction.foil}" stroke-width=".6"/><path d="M22 18L135 12M22 22L135 16M22 205L135 196M22 209L135 200" stroke="${faction.foil}" stroke-opacity=".5" stroke-width=".5"/><text x="78" y="43" text-anchor="middle" fill="${faction.foil}" font-size="10" font-family="serif" letter-spacing="4">三国群英</text><text x="78" y="176" text-anchor="middle" fill="#fff4d4" font-size="23" font-family="serif" font-weight="700" stroke="${faction.color}" stroke-width=".45">${faction.name}</text><text x="78" y="191" text-anchor="middle" fill="${faction.foil}" font-size="9" letter-spacing="2">${faction.subtitle}</text></svg>`;
+}
+
 export function toy(item, size = 120) {
+  if (item?.kind === 'general') return card(item, size);
   const id = `toy${++n}`;
   const key = item?.id || '';
   const name = item?.name || '';

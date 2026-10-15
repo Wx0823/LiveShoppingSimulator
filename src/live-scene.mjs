@@ -1,5 +1,5 @@
-import { toy } from './art.mjs';
-import { getItem, SERIES, RARITIES } from './game.mjs';
+import { toy, card } from './art.mjs';
+import { getItem, getSeries, SERIES, RARITIES } from './game.mjs';
 
 let sceneSerial = 0;
 const escape = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
@@ -58,7 +58,7 @@ export function createLiveScene({ container, onCue = () => {} }) {
     reset();
     const item = getItem(order?.itemId) || SERIES[0].items[0];
     const rarity = RARITIES[item.rarity];
-    const seriesColor = SERIES.find(series => series.id === order?.seriesId)?.color || '#f4d89b';
+    const seriesColor = getSeries(order?.seriesId)?.color || '#f4d89b';
     root.querySelectorAll(`[id="${uid}-bag"] stop`).forEach((stop, index) => {
       if (index === 1 || index === 3) stop.setAttribute('stop-color', seriesColor);
     });
@@ -67,7 +67,11 @@ export function createLiveScene({ container, onCue = () => {} }) {
     root.classList.toggle('actor-reduced', reducedMotion);
     const owner = order?.owner || (order?.isPlayer ? '你的订单' : '直播间藏友');
     node('.actor-bag-number').textContent = `BLIND BAG / ${String(order?.boxNumber || 1).padStart(2, '0')}`;
-    parts.card.innerHTML = order?.isPlayer
+    parts.card.innerHTML = !order?.isPlayer && item.kind === 'general'
+      ? `<svg x="204" y="220" width="132" height="185" viewBox="0 0 160 224">${card(item).replace(/^<svg[^>]*>/, '').replace(/<\/svg>$/, '')}</svg>`
+      : order?.isPlayer && getSeries(order.seriesId)?.faction
+      ? `<rect x="204" y="220" width="132" height="185" rx="10" fill="#203b39" stroke="#e0c37e" stroke-width="3"/><image href="${new URL(`../assets/three-kingdoms/runtime/back-${order.seriesId}.webp`, import.meta.url).href}" x="208" y="224" width="124" height="177" preserveAspectRatio="xMidYMid slice"/><rect x="208" y="365" width="124" height="36" fill="#203b39e8"/><text x="270" y="388" text-anchor="middle" font-size="10" font-weight="700" fill="#fff2d6">你的武将 · 即将揭晓</text>`
+      : order?.isPlayer
       ? '<rect x="204" y="239" width="132" height="166" rx="13" fill="#345e52" stroke="#ebcd92" stroke-width="5"/><rect x="213" y="248" width="114" height="148" rx="7" fill="none" stroke="#ebcd9270" stroke-width="1.5"/><path d="M270 270l33 52-33 52-33-52Z" fill="#537b64" stroke="#ebcd92" stroke-width="1.5"/><text x="270" y="337" text-anchor="middle" font-size="44" font-weight="800" fill="#ffedbc">?</text><text x="270" y="386" text-anchor="middle" font-size="10" font-weight="700" fill="#fff2d6">你的惊喜 · 即将揭晓</text>'
       : `<rect x="204" y="239" width="132" height="166" rx="13" fill="#fffcf1" stroke="${rarity.color}" stroke-width="5"/><rect x="211" y="246" width="118" height="19" rx="7" fill="${rarity.color}"/><text x="270" y="259" text-anchor="middle" font-size="9" font-weight="700" fill="#fff">${escape(rarity.name)} · COLLECTIBLE</text><svg x="214" y="264" width="112" height="112" viewBox="0 0 160 160">${toy(item).replace(/^<svg[^>]*>/, '').replace(/<\/svg>$/, '')}</svg><text x="270" y="388" text-anchor="middle" font-size="12" font-weight="700" fill="#3c5146">${escape(item.name)}</text>`;
     const scale = fast ? .28 : 1;
