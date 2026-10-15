@@ -1,6 +1,7 @@
 import packager from '@electron/packager';
 import fs from 'node:fs';
 import path from 'node:path';
+import { publishStableBuild } from './publish-build.mjs';
 const root = process.cwd();
 const manifest = JSON.parse(fs.readFileSync('package.json'));
 const version = manifest.devDependencies.electron;
@@ -15,3 +16,4 @@ const results = await packager({
   win32metadata: { CompanyName: 'LiveShoppingSimulator', FileDescription: '拆播间 · 直播购物模拟器', ProductName: '拆播间' }
 });
 console.log('Windows build:', results.join(', '));
+publishStableBuild(root, results[0]);
