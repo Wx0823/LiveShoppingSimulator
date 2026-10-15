@@ -15,17 +15,23 @@ async function fresh(fast = false) {
   await page.evaluate(({ key, state }) => localStorage.setItem(key, JSON.stringify(state)), { key, state });
   await page.reload();
 }
+async function selectWaitingBox() {
+  const box = page.locator('.queue-order[data-slot="1"]:not(.is-opening)');
+  const number = Number(await box.locator('.queue-package b').textContent());
+  await box.click();
+  assert.equal(await box.getAttribute('aria-pressed'), 'true');
+  return number;
+}
 try {
   await page.goto('http://127.0.0.1:4173');
   await fresh();
   await page.waitForTimeout(500);
   await page.screenshot({ path: 'artifacts/v0.3.0-studio.png' });
-  await page.locator('[data-box="4"]').click();
-  assert.equal(await page.locator('[data-box="4"]').getAttribute('aria-pressed'), 'true');
+  const boxNumber = await selectWaitingBox();
   await page.locator('#buy').click();
   await page.waitForSelector('.reel-track');
   const order = (await read()).pending;
-  assert.equal(order.boxNumber, 4);
+  assert.equal(order.boxNumber, boxNumber);
   assert.equal(await page.locator('#buy').isDisabled(), true);
   const firstPosition = await page.locator('.reel-track').evaluate(element => getComputedStyle(element).transform);
   await page.waitForTimeout(850);
@@ -52,10 +58,11 @@ try {
   await page.waitForSelector('[data-action="keep-result"]');
   assert.equal(await page.locator('.result-panel h2').textContent(), getItem(order.itemId).name);
   await page.locator('[data-action="keep-result"]').click();
-  assert.equal((await read()).inventory[0].boxNumber, 4);
+  assert.equal((await read()).inventory[0].boxNumber, boxNumber);
   assert.equal((await read()).opened, 1);
 
   await fresh();
+  await selectWaitingBox();
   await page.locator('#buy').click();
   await page.waitForSelector('.reel-track');
   const beforeReload = (await read()).pending;
@@ -66,6 +73,7 @@ try {
   assert.equal((await read()).coins, 1100 + getItem(beforeReload.itemId).value);
 
   await fresh();
+  await selectWaitingBox();
   await page.locator('#buy').click();
   await page.waitForSelector('.reel-skip');
   const beforeSkip = (await read()).pending;
@@ -76,6 +84,7 @@ try {
 
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await fresh();
+  await selectWaitingBox();
   const started = Date.now();
   await page.locator('#buy').click();
   await page.waitForSelector('[data-action="keep-result"]');

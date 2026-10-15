@@ -1,6 +1,6 @@
 {
   "name": "live-shopping-simulator",
-  "version": "0.3.3",
+  "version": "0.4.0",
   "private": true,
   "description": "拆播间 - 横屏单机潮玩直播购物模拟器",
   "main": "desktop/main.cjs",
@@ -14,6 +14,7 @@
     "package": "node scripts/package.mjs",
     "test:unboxing": "node tests/unboxing-smoke.mjs",
     "test:live": "node tests/live-room-smoke.mjs",
+    "test:layout": "node tests/layout-smoke.mjs",
     "test:host": "node tests/host-art-smoke.mjs"
   },
   "devDependencies": {

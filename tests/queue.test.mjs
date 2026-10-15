@@ -55,9 +55,9 @@ test('queue advances one order at a time, never redraws or charges, and settles 
 });
 
 test('save/load preserves paid item, balance, identity and exact queue progress in every phase', () => {
-  let state = enqueue(createGame(), 'cosmos', () => .99, 6, 3);
+  let state = enqueue(createGame(), 'cosmos', () => .99, 6, 4);
   const itemId = state.pending.itemId;
-  for (let ahead = 3; ahead >= 0; ahead--) {
+  for (let ahead = 4; ahead >= 0; ahead--) {
     state = roundTrip(state);
     assert.equal(state.pending.queueAhead, ahead);
     assert.equal(state.pending.itemId, itemId);
@@ -74,11 +74,11 @@ test('save/load preserves paid item, balance, identity and exact queue progress 
 });
 
 test('invalid positions and impossible saved queue phases are rejected', () => {
-  for (const ahead of [-1, 4, .5, NaN, Infinity, '2', null]) {
+  for (const ahead of [-1, 5, .5, NaN, Infinity, '2', null]) {
     assert.throws(() => enqueue(createGame(), 'street', () => 0, 1, ahead), /排队位置/);
   }
   for (const patch of [
-    { status: 'finished' }, { status: null }, { status: '' }, { queueAhead: -1 }, { queueAhead: 4 },
+    { status: 'finished' }, { status: null }, { status: '' }, { queueAhead: -1 }, { queueAhead: 5 },
     { queueAhead: .5 }, { queueAhead: '1' }, { queueAhead: null }, { queueAhead: undefined },
     { status: 'opening', queueAhead: 1 }, { status: 'ready', queueAhead: 3 }, { status: undefined, queueAhead: 0 },
   ]) {

@@ -64,7 +64,7 @@ export function buy(state, seriesId, rng = Math.random, boxNumber = state.opened
 }
 
 export function enqueue(state, seriesId, rng = Math.random, boxNumber = 1, queueAhead = 3) {
-  if (!Number.isInteger(queueAhead) || queueAhead < 0 || queueAhead > 3) throw new Error('排队位置无效。');
+  if (!Number.isInteger(queueAhead) || queueAhead < 0 || queueAhead > 4) throw new Error('排队位置无效。');
   const next = buy(state, seriesId, rng, boxNumber);
   return { ...next, pending: { ...next.pending, status: 'queued', queueAhead },
     history: record(state, `购买「${SERIES.find(entry => entry.id === seriesId).name}」${boxNumber}号盒，已加入代拆队列`, 'buy') };
@@ -150,7 +150,7 @@ export function hydrate(raw) {
   const inventory = raw.inventory.map(instance);
   const pending = raw.pending === null ? null : instance(raw.pending);
   if (pending && raw.pending.status !== undefined) {
-    if (!['queued', 'opening', 'ready'].includes(raw.pending.status) || !Number.isInteger(raw.pending.queueAhead) || raw.pending.queueAhead < 0 || raw.pending.queueAhead > 3 || (raw.pending.status !== 'queued' && raw.pending.queueAhead !== 0)) invalid();
+    if (!['queued', 'opening', 'ready'].includes(raw.pending.status) || !Number.isInteger(raw.pending.queueAhead) || raw.pending.queueAhead < 0 || raw.pending.queueAhead > 4 || (raw.pending.status !== 'queued' && raw.pending.queueAhead !== 0)) invalid();
     pending.status = raw.pending.status; pending.queueAhead = raw.pending.queueAhead;
   } else if (pending && raw.pending.queueAhead !== undefined) invalid();
   if (raw.opened !== inventory.length + raw.sold + (pending ? 1 : 0)) invalid();

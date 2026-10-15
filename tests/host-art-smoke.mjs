@@ -20,8 +20,8 @@ try {
     const image = new Image(); image.src = style.backgroundImage.slice(5, -2); await image.decode();
     return { source: image.src, width: image.naturalWidth, animation: style.animationName };
   });
-  assert.ok(backdrop.source.endsWith('/assets/studio-wide.png'), 'original complete host illustration is restored');
-  assert.ok(backdrop.width > 2000); assert.equal(backdrop.animation, 'none');
+  assert.match(backdrop.source, /\/assets\/studio(?:-wide)?\.png$/, 'original complete host illustration is restored');
+  assert.ok(backdrop.width >= 1024); assert.equal(backdrop.animation, 'none');
   assert.equal(await page.locator('.actor-arm, .actor-portrait').count(), 0, 'no separate moving body parts cover the original host');
   await page.evaluate(() => {
     window.scenePhases = new Set();

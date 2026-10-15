@@ -37,14 +37,14 @@ try {
     const image = new Image();
     image.onload = () => resolve(image.naturalWidth > 0);
     image.onerror = () => resolve(false);
-    image.src = new URL('assets/studio-wide.png', location.href).href;
+    image.src = getComputedStyle(document.querySelector('.scene-backdrop')).backgroundImage.slice(5, -2);
   }));
   assert.equal(backgroundLoaded, true, 'Packaged workstation art is available');
   const hostLoaded = await page.evaluate(() => new Promise(resolve => {
     const image = new Image();
     image.onload = () => resolve(image.naturalWidth >= 1024);
     image.onerror = () => resolve(false);
-    image.src = new URL('assets/studio-wide.png', location.href).href;
+    image.src = getComputedStyle(document.querySelector('.scene-backdrop')).backgroundImage.slice(5, -2);
   }));
   assert.equal(hostLoaded, true, 'Packaged original static host artwork is available');
   // The live room deliberately pauses between orders when its window is hidden.
@@ -58,17 +58,19 @@ try {
       return result;
     };
   });
-  await page.locator('[data-box="5"]').click();
+  const chosen = page.locator('.queue-order[data-slot="1"]:not(.is-opening)');
+  const boxNumber = Number(await chosen.locator('.queue-package b').textContent());
+  await chosen.click();
   await page.locator('#buy').click();
   await page.waitForSelector('[data-action="keep-result"]');
   saved = JSON.parse(await fs.readFile(savePath, 'utf8'));
   assert.ok(await page.evaluate(() => window.playedVoices.some(source => source.endsWith('/opening.wav'))), 'offline opening voice plays inside Electron');
   assert.ok(await page.evaluate(() => window.playedVoices.some(source => /\/(common|rare|epic|legendary)\.wav$/.test(source))), 'offline reward voice plays inside Electron');
-  assert.equal(saved.pending.boxNumber, 5); assert.equal(saved.opened, 2); assert.equal(saved.coins, 1900);
+  assert.equal(saved.pending.boxNumber, boxNumber); assert.equal(saved.opened, 2); assert.equal(saved.coins, 1900);
   await page.locator('[data-action="keep-result"]').click();
   await page.waitForFunction(() => !document.querySelector('#modal').open);
   saved = JSON.parse(await fs.readFile(savePath, 'utf8'));
-  assert.equal(saved.inventory[0].boxNumber, 5);
+  assert.equal(saved.inventory[0].boxNumber, boxNumber);
   const second = spawn(executablePath, args, { env, windowsHide: true, stdio: 'ignore' });
   const exitCode = await Promise.race([
     new Promise(resolve => second.once('exit', resolve)),

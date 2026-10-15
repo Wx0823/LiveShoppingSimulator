@@ -26,6 +26,7 @@ const voices = Object.fromEntries(['opening', ...Object.keys(RARITIES)].map(name
 let newDiscovery = false;
 let resetting = false;
 let selectedBox = null;
+let selectedOrderId = null;
 let activeNPC = null;
 let activePlayer = null;
 let npcSerial = 0;
@@ -72,25 +73,35 @@ function makeNPC() {
   const names = ['半糖拿铁', '云朵收藏家', '薄荷汽水', '阿橘', '桃子乌龙', '盒子里的宇宙'];
   return { id: `npc-${serial}`, owner: names[(serial - 1) % names.length], seriesId: series.id, itemId: series.items[[0, 1, 0, 2, 1, 0, 3][(serial - 1) % 7]].id, boxNumber: (serial - 1) % 6 + 1, isPlayer: false };
 }
+// Five physical places, including the order currently being opened.
 function fillQueue() {
-  const needed = state.pending?.status === 'queued' ? Math.max(0, state.pending.queueAhead - (activeNPC ? 1 : 0)) : 2;
+  const paid = state.pending?.status === 'queued' ? 1 : 0;
+  const needed = 5 - (activeNPC || activePlayer ? 1 : 0) - paid;
   while (npcQueue.length < needed) npcQueue.push(makeNPC());
   if (npcQueue.length > needed) npcQueue.length = needed;
+}
+function tableOrders() {
+  const orders = [...(activeNPC ? [activeNPC] : activePlayer ? [activePlayer] : []), ...npcQueue];
+  if (state.pending?.status === 'queued') orders.splice(state.pending.queueAhead, 0, { ...state.pending, owner: '我的订单', isPlayer: true });
+  return orders.slice(0, 5);
 }
 function renderQueue() {
   const list = $('#queue-list');
   if (!list) return;
-  const waiting = [...npcQueue];
-  if (state.pending?.status === 'queued') waiting.push({ ...state.pending, owner: '我的订单', isPlayer: true });
-  const markup = waiting.slice(0, 3).map((order, index) => {
+  const orders = tableOrders();
+  if (selectedOrderId && (selectedOrderId === activeNPC?.id || !orders.some(order => order.id === selectedOrderId))) { selectedOrderId = null; selectedBox = null; }
+  const markup = orders.map((order, index) => {
     const series = SERIES.find(entry => entry.id === order.seriesId);
-    return `<div class="queue-row queue-order ${order.isPlayer ? 'my-order mine' : ''}" data-order-id="${escape(order.id)}" data-player="${order.isPlayer}" style="--queue-color:${series.color}"><span class="queue-package" style="--parcel:${series.color}"><b>${pad(order.boxNumber)}</b><small>PLAY</small></span><div class="queue-copy"><strong>${escape(order.owner)}</strong><small>${series.name} · ${pad(order.boxNumber)} 号袋</small></div><em class="queue-position">${order.isPlayer ? '我的' : `${index + 1} 待拆`}</em></div>`;
+    const opening = order.id === (activePlayer || activeNPC)?.id;
+    const chosen = order.id === selectedOrderId;
+    return `<button type="button" class="queue-row queue-order ${order.isPlayer ? 'my-order mine' : ''} ${opening ? 'is-opening' : ''} ${chosen ? 'chosen' : ''}" data-order-id="${escape(order.id)}" data-player="${order.isPlayer}" data-slot="${index}" aria-label="${opening ? '正在拆' : '选择'} ${pad(order.boxNumber)} 号盲盒${order.isPlayer ? '，我的订单' : ''}" aria-pressed="${chosen}" ${opening || state.pending || busy || blocked ? 'disabled' : ''} style="--queue-color:${series.color}"><span class="queue-package" style="--parcel:${series.color}"><b>${pad(order.boxNumber)}</b><small>✦</small></span><span class="queue-copy"><strong>${order.isPlayer ? '我的盲盒' : series.name}</strong><small>${opening ? '正在拆盒' : chosen ? '已选中' : '等待开启'}</small></span><em class="queue-position">${order.isPlayer ? '我的' : opening ? '拆封中' : `${index + 1}`}</em></button>`;
   }).join('');
   if (list.dataset.orders !== markup) { list.innerHTML = markup; list.dataset.orders = markup; }
-  $('#queue-status').textContent = state.pending?.status === 'queued' ? state.pending.queueAhead ? `我的订单 · 前面还有 ${state.pending.queueAhead} 袋` : '轮到你了 · 请看主播拆袋' : activePlayer ? '正在拆你的盲袋' : '下单后加入队尾 · 按顺序代拆';
+  $('#queue-status').textContent = state.pending?.status === 'queued' ? `我的盲盒 · 前面还有 ${state.pending.queueAhead} 盒` : activePlayer ? '正在拆你的盲盒' : '桌上常备 5 盒 · 拆一盒，补一盒';
 }
 function liveCue(phase, order) {
   if (blocked || !order) return;
+  $('#queue-list').dataset.phase = phase;
   const name = order.isPlayer ? '你' : order.owner;
   if (phase === 'receive') {
     updateOrder(order);
@@ -215,7 +226,7 @@ function render() {
   const buyButton = $('#buy');
   buyButton.disabled = busy || Boolean(state.pending) || blocked;
   buyButton.innerHTML = busy ? '主播正在拆你的袋… <span>✦</span>' : state.pending ? '我的订单已排队 <span>✓</span>' : '下单 · 加入代拆队列 <span>↗</span>';
-  $('#purchase-hint').textContent = state.pending?.status === 'queued' ? `前面还有 ${state.pending.queueAhead} 袋 · 轮到你时自动揭晓` : state.coins < selected.price ? `还差 ${format(selected.price - state.coins)} 金币，可领取观看奖励` : selectedBox ? `已选 ${pad(selectedBox)} 号袋 · 下单后按顺序拆封` : '主播替你选袋 · 排到你时揭晓';
+  $('#purchase-hint').textContent = state.pending?.status === 'queued' ? `前面还有 ${state.pending.queueAhead} 袋 · 轮到你时自动揭晓` : state.coins < selected.price ? `还差 ${format(selected.price - state.coins)} 金币，可领取观看奖励` : selectedBox ? `已选 ${pad(selectedBox)} 号袋 · 下单后按顺序拆封` : '默认选择最后一盒 · 付款后发光';
   document.querySelectorAll('[data-box], #auto-pick').forEach(element => { element.disabled = busy || Boolean(state.pending) || blocked; });
   $('#reward-status').textContent = state.rewardCount ? `已攒下 ${state.rewardCount} 份 · ${state.rewardCount * 60} 金币` : `再看 ${Math.ceil(30 - state.watchSeconds)} 秒，领取 60 金币`;
   $('#claim-reward').disabled = !state.rewardCount || blocked;
@@ -224,12 +235,24 @@ function render() {
   renderQueue();
 }
 function renderSeries() {
-  const kickers = ['A LITTLE CITY ADVENTURE', 'A LETTER FROM THE WOODS', 'SOMEWHERE IN THE UNIVERSE'];
-  $('#series-list').innerHTML = SERIES.map((series, index) => `<button class="series-card ${series.id === selected.id ? 'selected' : ''}" data-series="${series.id}" aria-pressed="${series.id === selected.id}"><span class="series-check">✓</span>${toy({ ...series.items[0], color: series.color })}<div class="series-info"><span class="series-kicker">${kickers[index]}</span><h3>${series.name}</h3><p>${series.subtitle}</p><span class="price">◆ ${series.price}<small>金币</small></span></div><span class="series-number">0${index + 1} / COLLECTION</span></button>`).join('');
+  $('#series-list').innerHTML = SERIES.map(series => `<article class="series-card ${series.id === selected.id ? 'selected' : ''}"><button class="series-select" data-series="${series.id}" aria-pressed="${series.id === selected.id}">${toy({ ...series.items[0], color: series.color })}<span class="series-info"><h3>${series.name}</h3><span class="price">◆ ${format(series.price)}<small>金币 / 盒</small></span></span></button><button class="series-preview" data-preview="${series.id}" aria-label="预览${series.name}的礼物和概率">预览礼物 ↗</button></article>`).join('');
   $('#selected-label').textContent = selected.name;
   $('#selected-price').textContent = format(selected.price);
   $('#stage-theme').textContent = `${selected.name} · 正在代拆`;
   renderBoxes();
+}
+function previewSeries(seriesId) {
+  if (blocked || busy || ['result', 'reel', 'load-error'].includes(modalKind)) return;
+  const series = SERIES.find(entry => entry.id === seriesId);
+  if (!series) return;
+  const rank = Object.keys(RARITIES);
+  const items = [...series.items].sort((a, b) => rank.indexOf(b.rarity) - rank.indexOf(a.rarity));
+  const cards = items.map(item => {
+    const rarity = RARITIES[item.rarity];
+    const chance = rarity.chance / series.items.filter(other => other.rarity === item.rarity).length;
+    return `<article class="gift-preview-card" data-rarity="${item.rarity}" style="--rarity:${rarity.color}"><span class="rarity">${rarity.name}</span>${toy(item, 150)}<h3>${item.name}</h3><p class="gift-probability">拆出概率 <b>${Number(chance.toFixed(4))}%</b></p><span class="gift-value">可折现 ◆ ${format(item.value)}</span></article>`;
+  }).join('');
+  showModal('preview', modalHeader(`${series.name} · 礼物预览`, `${format(series.price)} 金币 / 盒 · 按品质从高到低排列`) + `<div class="modal-body"><div class="gift-preview-grid">${cards}</div><p class="probability-note">每盒随机获得一件礼物。以上为单件礼物概率，每次独立抽取；桌面位置和光效不影响概率。</p></div>`, 'gift-preview-dialog');
 }
 function showModal(kind, html, className = '') {
   modalKind = kind;
@@ -248,13 +271,18 @@ function modalHeader(title, subtitle = '') {
 const wait = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
 async function purchase() {
   if (busy || saving || blocked || state.pending) return;
-  const number = selectedBox || Math.floor(Math.random() * 6) + 1;
+  const orders = tableOrders();
+  const target = orders.find(order => order.id === selectedOrderId && order.id !== activeNPC?.id) || orders.at(-1);
+  const ahead = Math.max(0, orders.indexOf(target));
+  const number = selectedBox || target?.boxNumber || 1;
   let next;
-  try { next = enqueue(state, selected.id, Math.random, number, activeNPC ? 3 : 2); }
+  try { next = enqueue(state, selected.id, Math.random, number, ahead); }
   catch (error) { toast(error.message); sound(); return; }
   newDiscovery = !state.discovered.includes(next.pending.itemId);
   busy = true;
   if (await commit(next)) {
+    npcQueue = npcQueue.filter(order => order.id !== target?.id);
+    selectedOrderId = null;
     fillQueue();
     setStep(1);
     addChat('我', '拍下「' + selected.name + '」' + pad(number) + ' 号袋，加入代拆队列。', '我', true);
@@ -305,6 +333,7 @@ async function playerTurn(epoch) {
     music.setDucked(Boolean(activeVoice));
     activePlayer = null;
     busy = false;
+    fillQueue();
     if (state.pending?.status === 'ready') showResult();
     render();
   }
@@ -354,7 +383,7 @@ async function resolveResult(action) {
   if (!await commit(settle(state, action))) return;
   modal.close(); modalKind = '';
   $('#stage').classList.remove('opening', 'reveal', 'selecting');
-  selectedBox = null;
+  selectedBox = null; selectedOrderId = null;
   renderBoxes();
   setStep(1);
   updateOrder();
@@ -385,11 +414,11 @@ function openOdds() {
 }
 function openRules() {
   if (busy || state.pending || blocked) return;
-  showModal('rules', modalHeader('欢迎来到拆播间', '一场悠闲的收藏之旅，从这里开始。') + `<div class="modal-body"><div class="rule-list">${[['坐下来，看一会儿直播','你有 1,200 枚初始金币。前台观看直播每 30 秒可获得一份 60 金币奖励，最多积攒 3 份；切到后台或打开面板时暂停。'],['挑选喜欢的盲盒','从三个系列挑选，点击桌面 01–06 号盒，或交给主播帮选。下单后加入左侧队列，主播会持续替其他藏友拆袋；排到你时再拆袋、滚动揭晓，袋号不改变概率。'],['为惊喜，选一个去处','滚动条在中央指针处停下，展示你的藏品。可跳过动画，结果不变。随后选择折现或收入背包；图鉴会保留发现记录。'],['按自己的节奏来','游戏会自动保存。空格开盒，Esc 关闭面板，F11 切换全屏。设置中可开启快速开盒，独立调节背景音乐与音效。']].map(([title, text], index) => `<div class="rule-step"><span>0${index + 1}</span><div><h3>${title}</h3><p>${text}</p></div></div>`).join('')}</div></div>`, 'help-dialog');
+  showModal('rules', modalHeader('欢迎来到拆播间', '一场悠闲的收藏之旅，从这里开始。') + `<div class="modal-body"><div class="rule-list">${[['坐下来，看一会儿直播','你有 1,200 枚初始金币。前台观看直播每 30 秒可获得一份 60 金币奖励，最多积攒 3 份；切到后台或打开面板时暂停。'],['挑选喜欢的盲盒','从底部选择系列，可先预览全部礼物和概率。左侧桌面常备五盒，点击待拆盲盒选位置，不选则默认最后一盒；付款后你的盲盒会发光。拆一盒补一盒，轮到你时专属揭晓。位置不改变概率。'],['为惊喜，选一个去处','滚动条在中央指针处停下，展示你的藏品。可跳过动画，结果不变。随后选择折现或收入背包；图鉴会保留发现记录。'],['按自己的节奏来','游戏会自动保存。空格开盒，Esc 关闭面板，F11 切换全屏。设置中可开启快速开盒，独立调节背景音乐与音效。']].map(([title, text], index) => `<div class="rule-step"><span>0${index + 1}</span><div><h3>${title}</h3><p>${text}</p></div></div>`).join('')}</div></div>`, 'help-dialog');
 }
 function openSettings() {
   if (busy || state.pending || blocked) return;
-  showModal('settings', modalHeader('按你的节奏来', '一点小设置，让收藏之旅更合心意。') + `<div class="modal-body"><div class="setting-row"><div><h3>游戏音效</h3><p>开箱女声、拆封、滚动卡点和揭晓音效</p></div><button class="toggle ${state.settings.sound ? 'on' : ''}" data-setting="sound">${state.settings.sound ? '已开启' : '已关闭'}</button></div><div class="setting-row"><div><h3>背景音乐</h3><p>原创轻快纯音乐 · 16 小节无缝循环</p></div><button class="toggle ${state.settings.music ? 'on' : ''}" data-setting="music">${state.settings.music ? '已开启' : '已关闭'}</button></div><div class="setting-row"><div><h3>音乐音量</h3><p>开箱滚动时自动压低，切到后台暂停</p></div><label class="music-volume"><input id="music-volume" aria-label="背景音乐音量" type="range" min="0" max="1" step="0.01" value="${state.settings.musicVolume}"/><output id="music-volume-value">${Math.round(state.settings.musicVolume * 100)}%</output></label></div><div class="setting-row"><div><h3>快速开盒</h3><p>缩短选盒拆封和滚动揭晓，也可在动画中直接跳过</p></div><button class="toggle ${state.settings.fast ? 'on' : ''}" data-setting="fast">${state.settings.fast ? '已开启' : '已关闭'}</button></div><div class="setting-row"><div><h3>重新开始</h3><p>清空金币、背包和收藏记录，恢复初始状态</p></div><button class="danger-button" data-action="reset-confirm">重置存档</button></div><p class="version-note">拆播间 · Live Shopping Simulator v0.3.3<br>原创虚构直播间 · 离线单机 · 游戏内虚拟金币<br>${window.desktop ? '桌面存档保存在当前用户的应用数据目录。' : '网页预览存档保存在当前浏览器，与桌面版互相独立。'}</p><h3 style="font-size:12px">最近的收藏足迹</h3><ul class="history-list">${state.history.slice(0, 8).map(entry => `<li>${escape(entry.text)}</li>`).join('') || '<li>故事才刚刚开始。</li>'}</ul></div>`, 'help-dialog');
+  showModal('settings', modalHeader('按你的节奏来', '一点小设置，让收藏之旅更合心意。') + `<div class="modal-body"><div class="setting-row"><div><h3>游戏音效</h3><p>开箱女声、拆封、滚动卡点和揭晓音效</p></div><button class="toggle ${state.settings.sound ? 'on' : ''}" data-setting="sound">${state.settings.sound ? '已开启' : '已关闭'}</button></div><div class="setting-row"><div><h3>背景音乐</h3><p>原创轻快纯音乐 · 16 小节无缝循环</p></div><button class="toggle ${state.settings.music ? 'on' : ''}" data-setting="music">${state.settings.music ? '已开启' : '已关闭'}</button></div><div class="setting-row"><div><h3>音乐音量</h3><p>开箱滚动时自动压低，切到后台暂停</p></div><label class="music-volume"><input id="music-volume" aria-label="背景音乐音量" type="range" min="0" max="1" step="0.01" value="${state.settings.musicVolume}"/><output id="music-volume-value">${Math.round(state.settings.musicVolume * 100)}%</output></label></div><div class="setting-row"><div><h3>快速开盒</h3><p>缩短选盒拆封和滚动揭晓，也可在动画中直接跳过</p></div><button class="toggle ${state.settings.fast ? 'on' : ''}" data-setting="fast">${state.settings.fast ? '已开启' : '已关闭'}</button></div><div class="setting-row"><div><h3>重新开始</h3><p>清空金币、背包和收藏记录，恢复初始状态</p></div><button class="danger-button" data-action="reset-confirm">重置存档</button></div><p class="version-note">拆播间 · Live Shopping Simulator v0.4.0<br>原创虚构直播间 · 离线单机 · 游戏内虚拟金币<br>${window.desktop ? '桌面存档保存在当前用户的应用数据目录。' : '网页预览存档保存在当前浏览器，与桌面版互相独立。'}</p><h3 style="font-size:12px">最近的收藏足迹</h3><ul class="history-list">${state.history.slice(0, 8).map(entry => `<li>${escape(entry.text)}</li>`).join('') || '<li>故事才刚刚开始。</li>'}</ul></div>`, 'help-dialog');
 }
 function addChat(name, message, avatar, self = false) {
   const element = document.createElement('div');
@@ -404,13 +433,24 @@ let chatIndex = 5;
 setInterval(() => { if (!document.hidden && !blocked) addChat(...messages[chatIndex++ % messages.length]); }, 6400);
 
 $('#series-list').addEventListener('click', event => {
+  const preview = event.target.closest('[data-preview]');
+  if (preview) { previewSeries(preview.dataset.preview); return; }
   const card = event.target.closest('[data-series]');
   if (!card || busy || state.pending || blocked) return;
   selected = SERIES.find(entry => entry.id === card.dataset.series); renderSeries(); sound();
 });
+$('#queue-list').addEventListener('click', event => {
+  const box = event.target.closest('[data-order-id]');
+  if (!box || box.disabled || busy || saving || state.pending || blocked) return;
+  const order = tableOrders().find(order => order.id === box.dataset.orderId);
+  if (!order) return;
+  selectedOrderId = order.id; selectedBox = order.boxNumber;
+  render(); sound();
+});
 $('#box-grid').addEventListener('click', event => {
   const box = event.target.closest('[data-box]');
   if (!box || busy || state.pending || blocked) return;
+  selectedOrderId = null;
   selectedBox = Number(box.dataset.box);
   renderBoxes();
   $('#host-line').textContent = `记下啦，${pad(selectedBox)} 号盒。下单后就给你拿！`;
@@ -418,7 +458,7 @@ $('#box-grid').addEventListener('click', event => {
 });
 $('#auto-pick').addEventListener('click', () => {
   if (busy || state.pending || blocked) return;
-  selectedBox = null;
+  selectedBox = null; selectedOrderId = null;
   renderBoxes();
   $('#host-line').textContent = '交给我，下单后帮你挑一盒。';
 });

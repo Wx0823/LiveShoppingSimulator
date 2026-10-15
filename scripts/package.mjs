@@ -9,7 +9,7 @@ const results = await packager({
   out: path.join(root, 'dist'), overwrite: true, asar: true, prune: false,
   electronVersion: version,
   ...(fs.existsSync(zip) ? { electronZipDir: path.dirname(zip) } : {}),
-  ignore: [/^\/(node_modules|dist|tests|docs|scripts|artifacts|\.git)(\/|$)/, /\/assets\/.*\.md$/, /\/assets\/studio\.png$/, /\/(README\.md|CHANGELOG\.md|AGENTS\.md|pnpm-lock\.yaml|pnpm-workspace\.yaml)$/],
+  ignore: [/^\/(node_modules|dist|tests|docs|scripts|artifacts|\.git)(\/|$)/, /\/assets\/.*\.md$/, /\/(README\.md|CHANGELOG\.md|AGENTS\.md|pnpm-lock\.yaml|pnpm-workspace\.yaml)$/],
   appCopyright: 'Live Shopping Simulator',
   win32metadata: { CompanyName: 'LiveShoppingSimulator', FileDescription: '拆播间 · 直播购物模拟器', ProductName: '拆播间' }
 });
