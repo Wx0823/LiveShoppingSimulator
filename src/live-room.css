@@ -60,7 +60,7 @@ main { margin-left:clamp(72px,5vw,120px); width:calc(100% - clamp(72px,5vw,120px
 #queue-list[data-phase="clear"] .is-opening .queue-package { opacity:.35; transform:translateY(6px) scale(.92); }
 .box-selection[hidden] { display:none!important; }
 /* The reveal stays above the queue, leaving the seated host unobstructed. */
-.actor-stage { left:calc(43.6% + clamp(2.4px,.32vw,9.6px)); right:auto; top:auto; bottom:clamp(78px,11vh,235px); width:18%; height:45%; }
+.actor-stage { z-index:6; left:calc(43.6% + clamp(2.4px,.32vw,9.6px)); right:auto; top:auto; bottom:clamp(78px,11vh,235px); width:18%; height:45%; }
 .actor-bag-frame { display:none; }
 .actor-canvas>ellipse { display:none; }
 .actor-spotlight { inset:0; }
