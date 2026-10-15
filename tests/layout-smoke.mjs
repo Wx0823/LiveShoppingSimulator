@@ -26,6 +26,7 @@ async function visibleInsideViewport(selector, size) {
 try {
   await page.goto(process.env.GAME_URL || 'http://127.0.0.1:4173');
   await page.waitForSelector('.queue-order');
+  await page.waitForFunction(() => [...document.querySelectorAll('.queue-order')].every(box => box.getAnimations().every(animation => animation.playState === 'finished')));
   assert.equal(await page.getByText('下一单，拆你的期待', { exact: true }).count(), 0, 'the removed introductory heading stays absent');
   for (const size of [{ width: 1280, height: 720 }, { width: 1600, height: 960 }, { width: 1920, height: 1080 }, { width: 3840, height: 2160 }]) {
     await page.setViewportSize(size);
@@ -42,9 +43,11 @@ try {
     assert.equal(boxes.length, 5);
     assert.ok(Math.max(...boxes.map(box => box.y)) - Math.min(...boxes.map(box => box.y)) < 3, 'five boxes share one horizontal tabletop row');
     assert.ok(boxes.every(box => box.x >= stage.x && box.right <= stage.x + stage.width * .72 && box.bottom <= stage.y + stage.height), 'boxes remain on the left tabletop');
-    for (let index = 1; index < boxes.length; index++) assert.ok(boxes[index].x >= boxes[index - 1].right - 1, 'tabletop boxes do not overlap');
+    for (let index = 1; index < boxes.length; index++) assert.ok(boxes[index].right <= boxes[index - 1].x + 1, 'queue advances rightward toward the host without overlap');
+    const reveal = await page.locator('.actor-stage').boundingBox();
+    assert.ok(Math.abs(reveal.x + reveal.width / 2 - (boxes[0].x + boxes[0].right) / 2) < 3, 'reveal is centered over the rightmost opening box');
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth && document.documentElement.scrollHeight <= innerHeight + 1), 'main interface does not require scrolling');
-    await page.screenshot({ path: `artifacts/v0.4.0-layout-${size.width}.png` });
+    await page.screenshot({ path: `artifacts/v0.4.1-layout-${size.width}.png` });
     for (const series of SERIES) {
       await visibleInsideViewport(`[data-preview="${series.id}"]`, size);
       const before = await snapshot();
@@ -54,7 +57,7 @@ try {
       assert.deepEqual(await page.locator('.gift-preview-card h3').allTextContents(), [...series.items].reverse().map(item => item.name));
       await visibleInsideViewport('#modal', size);
       await visibleInsideViewport('#modal [data-action="close"]', size);
-      if (series.id === 'street') await page.screenshot({ path: `artifacts/v0.4.0-preview-${size.width}.png` });
+      if (series.id === 'street') await page.screenshot({ path: `artifacts/v0.4.1-preview-${size.width}.png` });
       await page.locator('#modal [data-action="close"]').click();
       assert.deepEqual(await snapshot(), before, 'preview neither buys a box nor changes the selected series');
     }
