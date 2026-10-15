@@ -2,9 +2,6 @@ import { toy } from './art.mjs';
 import { getItem, SERIES, RARITIES } from './game.mjs';
 
 let sceneSerial = 0;
-const hostAtlas = new URL('../assets/host-xiaotao-atlas.png', import.meta.url).href;
-// Keep the source atlas intact; SVG viewports select each transparent rigging layer.
-const texture = (viewBox, x, y, width, height) => `<svg x="${x}" y="${y}" width="${width}" height="${height}" viewBox="${viewBox}" preserveAspectRatio="none" overflow="hidden"><image href="${hostAtlas}" x="0" y="0" width="1882" height="836"/></svg>`;
 const escape = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
 
 /** Presentation only. Cancelling a performance always settles its original promise. */
@@ -15,7 +12,7 @@ export function createLiveScene({ container, onCue = () => {} }) {
   root.className = 'actor-stage';
   root.dataset.phase = 'idle';
   root.dataset.testid = 'live-actor';
-  root.innerHTML = `<div class="actor-spotlight"></div><svg class="actor-canvas" viewBox="0 0 520 470" aria-label="小桃正在直播拆盲袋" role="img">
+  root.innerHTML = `<div class="actor-spotlight"></div><svg class="actor-canvas" viewBox="150 180 240 270" aria-label="桌面正在自动拆盲袋" role="img">
     <defs>
       <linearGradient id="${uid}-hoodie" x2=".9" y2="1"><stop stop-color="#ffbb80"/><stop offset="1" stop-color="#df7952"/></linearGradient>
       <linearGradient id="${uid}-skin" x2=".6" y2="1"><stop stop-color="#ffe5cc"/><stop offset="1" stop-color="#efb593"/></linearGradient>
@@ -23,15 +20,6 @@ export function createLiveScene({ container, onCue = () => {} }) {
       <radialGradient id="${uid}-glow"><stop stop-color="#fff6c3" stop-opacity=".95"/><stop offset=".45" stop-color="#ffc978" stop-opacity=".4"/><stop offset="1" stop-color="#ffc978" stop-opacity="0"/></radialGradient>
     </defs>
     <ellipse cx="284" cy="451" rx="162" ry="16" fill="#45362d" opacity=".16"/>
-    <g class="actor-figure actor-portrait" data-testid="actor-portrait">
-      ${texture('112 4 490 828', 157.3, 55, 225.4, 380.88)}
-    </g>
-    <g class="actor-arm actor-arm-left" data-testid="actor-left-arm">
-      <g transform="rotate(40 166 246)">${texture('680 345 350 410', 136.6, 222.9, 147, 172.2)}</g>
-    </g>
-    <g class="actor-arm actor-arm-right" data-testid="actor-right-arm">
-      <g transform="rotate(-40 374 246)">${texture('1470 345 365 410', 260.6, 222.9, 153.3, 172.2)}</g>
-    </g>
     <g class="actor-result-light"><ellipse cx="270" cy="302" rx="180" ry="170" fill="url(#${uid}-glow)"/><path d="M270 162v-25m97 63 19-18m-206 18-19-18m210 121h25m-250 0h-23" stroke="#ffe6a2" stroke-width="5" stroke-linecap="round"/></g>
     <g class="actor-result-card" data-testid="actor-result-card"></g>
     <g class="actor-bag-frame" data-testid="actor-bag">
@@ -40,18 +28,15 @@ export function createLiveScene({ container, onCue = () => {} }) {
       <g class="actor-bag-print"><circle cx="270" cy="365" r="28" fill="#ecac79"/><path d="M270 342l6 15 16 7-16 6-6 16-6-16-16-6 16-7Z" fill="#fff9e5"/><text class="actor-bag-number" x="270" y="405" text-anchor="middle" fill="#896a45" font-size="10" font-weight="700" letter-spacing="2">BLIND BAG / 01</text></g>
     </g>
     <g class="actor-confetti">${Array.from({ length: 12 }, (_, index) => `<rect class="actor-spark" x="${264 + index % 3 * 5}" y="320" width="${index % 2 ? 5 : 8}" height="${index % 2 ? 11 : 6}" rx="1" fill="${['#ffd78b', '#f59e7d', '#fff9d9', '#a6cdb9'][index % 4]}"/>`).join('')}</g>
-    <g class="actor-table"><path d="M93 439h354l28 23H72Z" fill="#f5dbb6" stroke="#c9a27d" stroke-width="2"/><path d="M72 462h403v8H72Z" fill="#b48361"/><path d="M139 444h236l14 12H125Z" fill="#729084" stroke="#43675c" stroke-width="1.5"/><path d="M151 449h212" stroke="#b7d4bd" stroke-width="1" stroke-dasharray="3 6"/></g>
   </svg><div class="actor-live-note"><i></i><span>小桃正在拆袋</span></div>`;
   container.append(root);
   const node = selector => root.querySelector(selector);
   const parts = {
-    left: node('.actor-arm-left'), right: node('.actor-arm-right'), bag: node('.actor-bag-frame'),
+    bag: node('.actor-bag-frame'),
     bagLeft: node('.actor-bag-left'), bagRight: node('.actor-bag-right'), print: node('.actor-bag-print'),
     card: node('.actor-result-card'), light: node('.actor-result-light'),
 
   };
-  // Textured arms include their hands; place them above the bag and below the revealed card.
-  parts.bag.after(parts.left, parts.right, parts.card);
   let active = null;
   let destroyed = false;
 
@@ -99,17 +84,12 @@ export function createLiveScene({ container, onCue = () => {} }) {
       const cue = phase => {
         if (active !== run) return;
         root.dataset.phase = phase;
-        node('.actor-live-note span').textContent = ({ receive: `${owner} · 接单拿袋`, grip: '捏住封口，准备拆！', tear: '撕开啦——', reveal: `${owner} · ${order?.isPlayer ? '即将揭晓' : item.name}`, clear: '收好这一份惊喜' })[phase];
+        node('.actor-live-note span').textContent = ({ receive: `${owner} · 接单拿袋`, grip: '准备拆封 · 惊喜即将登场', tear: '撕开啦——', reveal: `${owner} · ${order?.isPlayer ? '即将揭晓' : item.name}`, clear: '收好这一份惊喜' })[phase];
         if (phase === 'receive') {
           animate(parts.bag, [{ transform: 'translate(-310px, 50px) rotate(-24deg)', opacity: 0 }, { transform: 'translate(-25px, -13px) rotate(8deg)', opacity: 1, offset: .8 }, { transform: 'translate(0, 0) rotate(0deg)', opacity: 1 }], 780);
-          animate(parts.left, [{ transform: 'rotate(18deg)' }, { transform: 'rotate(0deg)' }], 780);
         } else if (phase === 'grip') {
-          animate(parts.left, [{ transform: 'rotate(0deg)' }, { transform: 'translate(4px, -5px) rotate(-3deg)' }, { transform: 'translate(1px, 0) rotate(0deg)' }], 800);
-          animate(parts.right, [{ transform: 'rotate(0deg)' }, { transform: 'translate(-4px, -5px) rotate(3deg)' }, { transform: 'translate(-1px, 0) rotate(0deg)' }], 800);
           animate(parts.bag, [{ transform: 'translate(0,0) scale(1)' }, { transform: 'translate(0,-4px) scale(1.04,.97)', offset: .55 }, { transform: 'translate(0,0) scale(1)' }], 800);
         } else if (phase === 'tear') {
-          animate(parts.left, [{ transform: 'translate(0,0) rotate(0deg)' }, { transform: 'rotate(20deg)', offset: .35 }, { transform: 'rotate(17deg)' }], 650);
-          animate(parts.right, [{ transform: 'translate(0,0) rotate(0deg)' }, { transform: 'rotate(-20deg)', offset: .35 }, { transform: 'rotate(-17deg)' }], 650);
           animate(parts.bagLeft, [{ transform: 'translate(0,0) rotate(0deg)' }, { transform: 'translate(-38px,20px) rotate(-14deg)' }], 580);
           animate(parts.bagRight, [{ transform: 'translate(0,0) rotate(0deg)' }, { transform: 'translate(38px,20px) rotate(14deg)' }], 580);
           animate(parts.print, [{ opacity: 1 }, { opacity: 0 }], 100);
@@ -124,8 +104,6 @@ export function createLiveScene({ container, onCue = () => {} }) {
           animate(parts.card, [{ opacity: 1, transform: 'translate(0,-32px) scale(1)' }, { opacity: 0, transform: 'translate(100px,-55px) scale(.75)' }], 600);
           animate(parts.light, [{ opacity: .85 }, { opacity: 0 }], 400);
           animate(parts.bag, [{ opacity: 1, transform: 'translate(0,0)' }, { opacity: 0, transform: 'translate(15px,90px)' }], 550);
-          animate(parts.left, [{ transform: 'rotate(17deg)' }, { transform: 'translate(0,0) rotate(0)' }], 650);
-          animate(parts.right, [{ transform: 'rotate(-17deg)' }, { transform: 'translate(0,0) rotate(0)' }], 650);
         }
         // A consumer callback cannot strand this scene's playback promise.
         try { onCue(phase, order); } catch (error) { console.error('Live scene cue failed:', error); }

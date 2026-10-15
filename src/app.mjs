@@ -17,6 +17,12 @@ let blocked = false;
 let modalKind = '';
 let toastTimer;
 let audio;
+let activeVoice;
+const voices = Object.fromEntries(['opening', ...Object.keys(RARITIES)].map(name => {
+  const clip = new Audio(new URL(`../assets/voice/${name}.wav`, import.meta.url).href);
+  clip.preload = 'auto'; clip.volume = .72;
+  return [name, clip];
+}));
 let newDiscovery = false;
 let resetting = false;
 let selectedBox = null;
@@ -134,35 +140,71 @@ function toast(message) {
   $('#toast').classList.add('visible');
   toastTimer = setTimeout(() => $('#toast').classList.remove('visible'), 3500);
 }
-function sound(type = 'tap') {
-  if (!state.settings.sound) return;
+function stopVoice() {
+  if (activeVoice) { activeVoice.pause(); activeVoice.currentTime = 0; activeVoice = null; }
+  music.setDucked(modalKind === 'reel');
+}
+function speak(name) {
+  stopVoice();
+  if (!state.settings.sound || document.hidden || !voices[name]) return;
+  const clip = voices[name]; activeVoice = clip;
+  music.setDucked(true);
+  const done = () => { if (activeVoice === clip) { activeVoice = null; music.setDucked(modalKind === 'reel'); } };
+  clip.onended = done; clip.onerror = done;
+  void clip.play().catch(done);
+}
+function sound(type = 'tap', detail = {}) {
+  if (!state.settings.sound || document.hidden) return;
   try {
     audio ||= new AudioContext();
-    if (audio.state === 'suspended') audio.resume();
-    if (type === 'tear') {
-      const buffer = audio.createBuffer(1, Math.floor(audio.sampleRate * .2), audio.sampleRate);
+    if (audio.state === 'suspended') void audio.resume().catch(() => {});
+    const now = audio.currentTime;
+    const tone = (frequency, start, length, volume, shape = 'sine', end = frequency) => {
+      const oscillator = audio.createOscillator(); const gain = audio.createGain();
+      oscillator.type = shape;
+      oscillator.frequency.setValueAtTime(frequency, start);
+      oscillator.frequency.exponentialRampToValueAtTime(end, start + length);
+      gain.gain.setValueAtTime(.0001, start);
+      gain.gain.linearRampToValueAtTime(volume, start + .006);
+      gain.gain.exponentialRampToValueAtTime(.0001, start + length);
+      oscillator.connect(gain); gain.connect(audio.destination);
+      oscillator.start(start); oscillator.stop(start + length + .015);
+      oscillator.onended = () => { oscillator.disconnect(); gain.disconnect(); };
+    };
+    if (type === 'tear' || type === 'swoosh' || type === 'tick') {
+      const length = type === 'tear' ? .26 : type === 'swoosh' ? .5 : .028;
+      const buffer = audio.createBuffer(1, Math.floor(audio.sampleRate * length), audio.sampleRate);
       const samples = buffer.getChannelData(0);
-      for (let i = 0; i < samples.length; i++) samples[i] = (Math.random() * 2 - 1) * (1 - i / samples.length);
+      for (let i = 0; i < samples.length; i++) {
+        const t = i / samples.length;
+        samples[i] = (Math.random() * 2 - 1) * (type === 'tear' ? .5 + .5 * Math.sin(t * 90) ** 2 : 1);
+      }
       const source = audio.createBufferSource(); source.buffer = buffer;
-      const filter = audio.createBiquadFilter(); filter.type = 'highpass'; filter.frequency.value = 1700;
-      const gain = audio.createGain(); gain.gain.value = .07;
+      const filter = audio.createBiquadFilter(); filter.type = 'bandpass'; filter.Q.value = .8;
+      filter.frequency.setValueAtTime(type === 'tick' ? 2400 : 900, now);
+      filter.frequency.exponentialRampToValueAtTime(type === 'swoosh' ? 4400 : 1800, now + length);
+      const gain = audio.createGain();
+      gain.gain.setValueAtTime(.0001, now);
+      gain.gain.linearRampToValueAtTime(type === 'tick' ? .07 : .12, now + (type === 'swoosh' ? .18 : .004));
+      gain.gain.exponentialRampToValueAtTime(.0001, now + length);
       source.connect(filter); filter.connect(gain); gain.connect(audio.destination); source.start();
       source.onended = () => { source.disconnect(); filter.disconnect(); gain.disconnect(); };
+      if (type === 'tick') tone(780, now, .035, .018, 'triangle', 480);
       return;
     }
-    const frequencies = type === 'reveal' ? [523, 659, 784, 1047] : type === 'coin' ? [880, 1175] : type === 'tick' ? [1450] : [440];
+    if (type === 'slowing') { tone(196, now, .4, .035, 'sine', 147); return; }
+    const rank = Math.max(0, Object.keys(RARITIES).indexOf(detail.rarity));
+    const frequencies = type === 'reveal' ? [523.25, 659.25, 783.99, 1046.5, ...(rank >= 2 ? [1318.5, 1568] : [])] : type === 'coin' ? [880, 1175] : [440];
+    if (type === 'reveal') tone(130, now, .23, .09, 'sine', 55);
     frequencies.forEach((frequency, index) => {
-      const oscillator = audio.createOscillator();
-      const gain = audio.createGain();
-      const start = audio.currentTime + index * .095;
-      oscillator.type = 'sine'; oscillator.frequency.value = frequency;
-      const length = type === 'tick' ? .035 : .25;
-      gain.gain.setValueAtTime(0, start); gain.gain.linearRampToValueAtTime(type === 'tick' ? .025 : .06, start + .005); gain.gain.exponentialRampToValueAtTime(.001, start + length);
-      oscillator.connect(gain); gain.connect(audio.destination); oscillator.start(start); oscillator.stop(start + length + .02);
+      const start = now + index * (type === 'reveal' ? .075 : .095);
+      tone(frequency, start, type === 'reveal' ? .55 : .2, type === 'reveal' ? .045 : .045);
+      if (type === 'reveal') tone(frequency * 2, start, .3, .012);
     });
   } catch { /* Audio is optional; the game stays playable without a device. */ }
 }
 function render() {
+  if (!state.settings.sound && activeVoice) stopVoice();
   $('#coins').textContent = format(state.coins);
   $('#opened').textContent = state.opened;
   $('#bag-count').textContent = state.inventory.length;
@@ -250,12 +292,17 @@ async function playerTurn(epoch) {
     showModal('reel', '<div class="opening-header"><div><span>LIVE UNBOXING / 现场拆单</span><h2>这一袋，会是谁？</h2><p>第 ' + String(state.opened).padStart(3, '0') + ' 单 · ' + series.name + ' · ' + pad(order.boxNumber || 1) + ' 号袋</p></div><div class="opening-host"><span>小桃</span><b>正在为你开袋</b></div></div><div id="reel-container"></div><div class="opening-footer"><span>✦ ' + series.name + ' / 4 款可收藏</span><span>揭晓后选择折现或收入背包</span></div>', 'opening-dialog');
     await playReel({ container: $('#reel-container'), items: series.items, winnerId: order.itemId,
       seed: order.id + ':' + order.itemId, fast: state.settings.fast, reducedMotion: reducedMotion(),
-      onTick: () => sound('tick'), onPhase: phase => { if (phase === 'revealed') sound('reveal'); } });
+      onTick: () => sound('tick'), onPhase: phase => {
+        if (phase === 'opening') { sound('tear'); if (!state.settings.fast && !reducedMotion()) speak('opening'); }
+        if (phase === 'rolling') sound('swoosh');
+        if (phase === 'slowing') sound('slowing');
+        if (phase === 'revealed') { const rarity = getItem(order.itemId).rarity; sound('reveal', { rarity }); speak(rarity); }
+      } });
   } catch (error) {
     console.error('Opening presentation failed', error);
     toast('动画暂时中断，已保留订单，正在继续处理。');
   } finally {
-    music.setDucked(false);
+    music.setDucked(Boolean(activeVoice));
     activePlayer = null;
     busy = false;
     if (state.pending?.status === 'ready') showResult();
@@ -342,7 +389,7 @@ function openRules() {
 }
 function openSettings() {
   if (busy || state.pending || blocked) return;
-  showModal('settings', modalHeader('按你的节奏来', '一点小设置，让收藏之旅更合心意。') + `<div class="modal-body"><div class="setting-row"><div><h3>游戏音效</h3><p>轻柔的点击、开盒和金币提示音</p></div><button class="toggle ${state.settings.sound ? 'on' : ''}" data-setting="sound">${state.settings.sound ? '已开启' : '已关闭'}</button></div><div class="setting-row"><div><h3>背景音乐</h3><p>原创轻快纯音乐 · 16 小节无缝循环</p></div><button class="toggle ${state.settings.music ? 'on' : ''}" data-setting="music">${state.settings.music ? '已开启' : '已关闭'}</button></div><div class="setting-row"><div><h3>音乐音量</h3><p>开箱滚动时自动压低，切到后台暂停</p></div><label class="music-volume"><input id="music-volume" aria-label="背景音乐音量" type="range" min="0" max="1" step="0.01" value="${state.settings.musicVolume}"/><output id="music-volume-value">${Math.round(state.settings.musicVolume * 100)}%</output></label></div><div class="setting-row"><div><h3>快速开盒</h3><p>缩短选盒拆封和滚动揭晓，也可在动画中直接跳过</p></div><button class="toggle ${state.settings.fast ? 'on' : ''}" data-setting="fast">${state.settings.fast ? '已开启' : '已关闭'}</button></div><div class="setting-row"><div><h3>重新开始</h3><p>清空金币、背包和收藏记录，恢复初始状态</p></div><button class="danger-button" data-action="reset-confirm">重置存档</button></div><p class="version-note">拆播间 · Live Shopping Simulator v0.3.2<br>原创虚构直播间 · 离线单机 · 游戏内虚拟金币<br>${window.desktop ? '桌面存档保存在当前用户的应用数据目录。' : '网页预览存档保存在当前浏览器，与桌面版互相独立。'}</p><h3 style="font-size:12px">最近的收藏足迹</h3><ul class="history-list">${state.history.slice(0, 8).map(entry => `<li>${escape(entry.text)}</li>`).join('') || '<li>故事才刚刚开始。</li>'}</ul></div>`, 'help-dialog');
+  showModal('settings', modalHeader('按你的节奏来', '一点小设置，让收藏之旅更合心意。') + `<div class="modal-body"><div class="setting-row"><div><h3>游戏音效</h3><p>开箱女声、拆封、滚动卡点和揭晓音效</p></div><button class="toggle ${state.settings.sound ? 'on' : ''}" data-setting="sound">${state.settings.sound ? '已开启' : '已关闭'}</button></div><div class="setting-row"><div><h3>背景音乐</h3><p>原创轻快纯音乐 · 16 小节无缝循环</p></div><button class="toggle ${state.settings.music ? 'on' : ''}" data-setting="music">${state.settings.music ? '已开启' : '已关闭'}</button></div><div class="setting-row"><div><h3>音乐音量</h3><p>开箱滚动时自动压低，切到后台暂停</p></div><label class="music-volume"><input id="music-volume" aria-label="背景音乐音量" type="range" min="0" max="1" step="0.01" value="${state.settings.musicVolume}"/><output id="music-volume-value">${Math.round(state.settings.musicVolume * 100)}%</output></label></div><div class="setting-row"><div><h3>快速开盒</h3><p>缩短选盒拆封和滚动揭晓，也可在动画中直接跳过</p></div><button class="toggle ${state.settings.fast ? 'on' : ''}" data-setting="fast">${state.settings.fast ? '已开启' : '已关闭'}</button></div><div class="setting-row"><div><h3>重新开始</h3><p>清空金币、背包和收藏记录，恢复初始状态</p></div><button class="danger-button" data-action="reset-confirm">重置存档</button></div><p class="version-note">拆播间 · Live Shopping Simulator v0.3.3<br>原创虚构直播间 · 离线单机 · 游戏内虚拟金币<br>${window.desktop ? '桌面存档保存在当前用户的应用数据目录。' : '网页预览存档保存在当前浏览器，与桌面版互相独立。'}</p><h3 style="font-size:12px">最近的收藏足迹</h3><ul class="history-list">${state.history.slice(0, 8).map(entry => `<li>${escape(entry.text)}</li>`).join('') || '<li>故事才刚刚开始。</li>'}</ul></div>`, 'help-dialog');
 }
 function addChat(name, message, avatar, self = false) {
   const element = document.createElement('div');
@@ -395,7 +442,11 @@ $('#music-toggle')?.addEventListener('click', async () => {
 });
 document.addEventListener('pointerdown', () => { void music.unlock(); }, { capture: true });
 document.addEventListener('keydown', () => { void music.unlock(); }, { capture: true });
-document.addEventListener('visibilitychange', () => { music.setPaused(document.hidden); if (!document.hidden) void music.unlock(); });
+document.addEventListener('visibilitychange', () => {
+  music.setPaused(document.hidden);
+  if (document.hidden) { stopVoice(); if (audio?.state === 'running') void audio.suspend().catch(() => {}); }
+  else { void music.unlock(); if (audio?.state === 'suspended') void audio.resume().catch(() => {}); }
+});
 window.addEventListener('pagehide', () => { liveRunning = false; liveEpoch++; scene.destroy(); music.destroy(); });
 modal.addEventListener('input', event => { if (event.target.id === 'music-volume') $('#music-volume-value').textContent = `${Math.round(Number(event.target.value) * 100)}%`; });
 modal.addEventListener('change', async event => {

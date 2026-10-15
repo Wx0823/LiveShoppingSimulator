@@ -37,22 +37,33 @@ try {
     const image = new Image();
     image.onload = () => resolve(image.naturalWidth > 0);
     image.onerror = () => resolve(false);
-    image.src = new URL('assets/studio-live-empty.png', location.href).href;
+    image.src = new URL('assets/studio-wide.png', location.href).href;
   }));
   assert.equal(backgroundLoaded, true, 'Packaged workstation art is available');
   const hostLoaded = await page.evaluate(() => new Promise(resolve => {
     const image = new Image();
     image.onload = () => resolve(image.naturalWidth >= 1024);
     image.onerror = () => resolve(false);
-    image.src = new URL('assets/host-xiaotao-atlas.png', location.href).href;
+    image.src = new URL('assets/studio-wide.png', location.href).href;
   }));
-  assert.equal(hostLoaded, true, 'Packaged textured host artwork is available');
+  assert.equal(hostLoaded, true, 'Packaged original static host artwork is available');
   // The live room deliberately pauses between orders when its window is hidden.
   await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].showInactive());
+  await page.evaluate(() => {
+    window.playedVoices = [];
+    const original = HTMLMediaElement.prototype.play;
+    HTMLMediaElement.prototype.play = function (...args) {
+      const result = original.apply(this, args);
+      result.then(() => { if (this.src.endsWith('.wav')) window.playedVoices.push(this.src); }, () => {});
+      return result;
+    };
+  });
   await page.locator('[data-box="5"]').click();
   await page.locator('#buy').click();
   await page.waitForSelector('[data-action="keep-result"]');
   saved = JSON.parse(await fs.readFile(savePath, 'utf8'));
+  assert.ok(await page.evaluate(() => window.playedVoices.some(source => source.endsWith('/opening.wav'))), 'offline opening voice plays inside Electron');
+  assert.ok(await page.evaluate(() => window.playedVoices.some(source => /\/(common|rare|epic|legendary)\.wav$/.test(source))), 'offline reward voice plays inside Electron');
   assert.equal(saved.pending.boxNumber, 5); assert.equal(saved.opened, 2); assert.equal(saved.coins, 1900);
   await page.locator('[data-action="keep-result"]').click();
   await page.waitForFunction(() => !document.querySelector('#modal').open);

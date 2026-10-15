@@ -1,4 +1,4 @@
-.scene-backdrop { background-image:url('../assets/studio-live-empty.png'); }
+.scene-backdrop { background-image:url('../assets/studio-wide.png'); }
 .stage-shade { background:linear-gradient(90deg,#25362a22,transparent 45%),linear-gradient(0deg,#1c352a66,transparent 25%); }
 .stage-label { left:18px; top:12px; padding:0; background:none; border:0; backdrop-filter:none; text-shadow:0 1px 6px #172e29; }
 .stage-label strong { font-size:15px; margin-top:4px; }
@@ -66,3 +66,18 @@
   .order-receipt strong { font-size:9px; }
 }
 @media(prefers-reduced-motion:reduce) { .queue-order { animation:none; } }
+
+/* Original complete illustration: the host remains still while the tabletop opens orders. */
+.scene-backdrop { background-position:center; background-size:cover; animation:none; }
+.host-avatar { background-image:url('../assets/studio-wide.png'); background-position:80% 27%; }
+.actor-stage { left:38%; right:auto; top:24%; bottom:62px; width:29%; }
+.actor-spotlight { inset:0; }
+.actor-live-note { display:flex; bottom:-4px; left:0; right:0; font-size:9px; }
+.order-receipt { left:40%; right:auto; width:25%; max-width:190px; }
+.host-bubble { right:3%; bottom:77px; width:27%; }
+@media(max-width:1280px) {
+  .actor-stage { left:38%; width:29%; top:27%; bottom:62px; }
+  .actor-live-note { font-size:7px; padding:3px; }
+  .order-receipt { left:40%; right:auto; width:25%; padding:6px 8px; }
+  .host-bubble { bottom:70px; }
+}
