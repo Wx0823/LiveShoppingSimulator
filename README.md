@@ -2,13 +2,13 @@
 
 一款横屏、离线单机的潮玩直播购物模拟器。坐进小桃的虚构直播间，挑选盲盒，让主播拆开，再决定折现还是收藏。
 
-当前版本：**v0.5.1 三国群英版**。使用首版静态小桃布景、桌面自动拆袋、45 位原创国风武将收藏卡、模拟弹幕、离线合成女声、分阶段音效和原创循环器乐。
+当前版本：**v0.6.0 三国群英重绘版**。使用首版静态小桃布景、桌面自动拆袋、45 位线绘国风幻想武将收藏卡、模拟弹幕、分阶段音效和原创循环器乐。开箱读条不再播放配音，揭晓时保留品质提示。
 
 ## 直接玩
 
 在本机项目目录双击 **`启动游戏.cmd`**，或运行：
 
-`dist/v0.5.1/LiveShoppingSimulator-win32-x64/LiveShoppingSimulator.exe`
+`dist/v0.6.0/LiveShoppingSimulator-win32-x64/LiveShoppingSimulator.exe`
 
 推荐使用项目根目录的启动脚本：它读取当前版本，并在升级时正常关闭本项目旧窗口后启动新版。如果直接打开 EXE，请先关闭旧游戏，以免单实例保护唤回旧窗口。
 
@@ -100,4 +100,4 @@ v0.2 的场景参考、取舍和来源见 [视觉设计记录](docs/visual-direc
 
 后续方向：更多物品造型、收藏展示柜、阶段收藏目标、不同风格直播间。下一版内容根据实际试玩反馈选择。
 
-三国美术设计与生成记录见 [包装与卡面](assets/three-kingdoms/design-notes.md)、[45 位武将立绘](assets/three-kingdoms/portraits-notes.md)。独立验收见 [三国版本测试报告](docs/qa-v0.5.0.md)及 [v0.5.1 启动回归报告](docs/qa-v0.5.1.md)。
+新版美术提示词与来源见 [包装与卡背](assets/three-kingdoms/pack-back-v06-notes.md)、[魏](assets/three-kingdoms/wei-v06-art-notes.md)、[蜀](assets/three-kingdoms/shu-v06-art-notes.md)、[吴](assets/three-kingdoms/wu-v06-art-notes.md)。独立验收见 [v0.6.0 测试报告](docs/qa-v0.6.0.md)。历史记录见 [首版三国测试](docs/qa-v0.5.0.md)及 [v0.5.1 启动回归](docs/qa-v0.5.1.md)。

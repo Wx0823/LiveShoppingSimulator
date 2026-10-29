@@ -2,6 +2,8 @@
 
 这些 WAV 为 Windows System.Speech / Microsoft Yaoyao 女声的机器合成语音，非真人录音。游戏直接播放素材文件，运行时不调用系统语音或联网服务。
 
+v0.6.0 起开箱读条阶段不再加载或播放 `opening.wav`；仅在结果揭晓时保留品质提示语音。下表保留素材来源记录。
+
 用 PowerShell 7 执行 `pwsh -File scripts/generate-voice.ps1` 可重新生成；生成电脑需安装 Yaoyao，缺少时自动选择 Huihui。Windows PowerShell 5.1 通常只能发现 Huihui Desktop，因此建议使用 PowerShell 7 以复现本次选用的 Yaoyao 声线。采样格式为 24 kHz、16-bit、单声道；语速 +1，合成音量 82%。不同 Windows 语音引擎版本可能产生细微差异。
 
 | 文件 | 台词 |
