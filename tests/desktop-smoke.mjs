@@ -90,7 +90,7 @@ try {
   await page.waitForSelector('[data-action="keep-result"]');
   saved = JSON.parse(await fs.readFile(savePath, 'utf8'));
   assert.equal(await page.evaluate(() => window.playedVoices.some(source => source.endsWith('/opening.wav'))), false, 'opening progress has no narration');
-  assert.ok(await page.evaluate(() => window.playedVoices.some(source => /\/(common|rare|epic|legendary)\.wav$/.test(source))), 'offline reward voice plays inside Electron');
+  assert.deepEqual(await page.evaluate(() => window.playedVoices), [], 'revealing rewards never plays speech');
   assert.equal(saved.pending.boxNumber, boxNumber); assert.equal(saved.opened, 2); assert.equal(saved.coins, 2000 - getSeries(saved.pending.seriesId).price);
   await page.locator('[data-action="keep-result"]').click();
   await page.waitForFunction(() => !document.querySelector('#modal').open);

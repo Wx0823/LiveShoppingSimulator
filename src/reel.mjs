@@ -203,7 +203,7 @@ export function playReel({ container, items, winnerId, seed, packMarkup = '', fa
       observer = new window.ResizeObserver(resize);
       observer.observe(viewport);
     }
-    notify(onPhase, 'opening');
+    notify(onPhase, 'opening', { durationMs: openingDuration + duration });
     position(reducedMotion ? 1 : 0);
     // The independent deadline also works when animation frames are suspended.
     timer = window.setTimeout(finish, openingDuration + duration + 100);

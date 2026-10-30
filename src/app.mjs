@@ -3,6 +3,7 @@ import { toy, card, pack } from './art.mjs';
 import { playReel } from './reel.mjs';
 import { createLiveScene } from './live-scene.mjs';
 import { createMusicPlayer } from './music.mjs';
+import { createUnboxingMusic } from './unboxing-music.mjs';
 
 const $ = selector => document.querySelector(selector);
 const format = value => value.toLocaleString('zh-CN');
@@ -17,12 +18,6 @@ let blocked = false;
 let modalKind = '';
 let toastTimer;
 let audio;
-let activeVoice;
-const voices = Object.fromEntries(Object.keys(RARITIES).map(name => {
-  const clip = new Audio(new URL(`../assets/voice/${name}.wav`, import.meta.url).href);
-  clip.preload = 'auto'; clip.volume = .72;
-  return [name, clip];
-}));
 let newDiscovery = false;
 let resetting = false;
 let selectedBox = null;
@@ -35,6 +30,7 @@ const queueArt = new Map();
 let liveEpoch = 0;
 let liveRunning = false;
 const music = createMusicPlayer();
+const unboxingMusic = createUnboxingMusic();
 let appliedMusic = '';
 const scene = createLiveScene({ container: $('#stage'), onCue: liveCue });
 const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -67,6 +63,7 @@ function syncMusic() {
   appliedMusic = key;
   music.setVolume(state.settings.musicVolume);
   music.setEnabled(state.settings.music);
+  if (!state.settings.music || state.settings.musicVolume === 0) unboxingMusic.stop();
 }
 function makeNPC() {
   const serial = ++npcSerial;
@@ -157,19 +154,6 @@ function toast(message) {
   $('#toast').classList.add('visible');
   toastTimer = setTimeout(() => $('#toast').classList.remove('visible'), 3500);
 }
-function stopVoice() {
-  if (activeVoice) { activeVoice.pause(); activeVoice.currentTime = 0; activeVoice = null; }
-  music.setDucked(modalKind === 'reel');
-}
-function speak(name) {
-  stopVoice();
-  if (!state.settings.sound || document.hidden || !voices[name]) return;
-  const clip = voices[name]; activeVoice = clip;
-  music.setDucked(true);
-  const done = () => { if (activeVoice === clip) { activeVoice = null; music.setDucked(modalKind === 'reel'); } };
-  clip.onended = done; clip.onerror = done;
-  void clip.play().catch(done);
-}
 function sound(type = 'tap', detail = {}) {
   if (!state.settings.sound || document.hidden) return;
   try {
@@ -221,7 +205,6 @@ function sound(type = 'tap', detail = {}) {
   } catch { /* Audio is optional; the game stays playable without a device. */ }
 }
 function render() {
-  if (!state.settings.sound && activeVoice) stopVoice();
   $('#coins').textContent = format(state.coins);
   $('#opened').textContent = state.opened;
   $('#bag-count').textContent = state.inventory.length;
@@ -343,21 +326,27 @@ async function playerTurn(epoch) {
     if (epoch !== liveEpoch) return;
     if (!await saveTransition(readyQueuedOpening, epoch)) return;
     setStep(3);
-    music.setDucked(true);
+    music.setPaused(true);
     showModal('reel', '<div class="opening-header"><div><span>LIVE UNBOXING / 现场拆单</span><h2>这一袋，会是谁？</h2><p>第 ' + String(state.opened).padStart(3, '0') + ' 单 · ' + series.name + ' · ' + pad(order.boxNumber || 1) + ' 号袋</p></div><div class="opening-host"><span>小桃</span><b>正在为你开袋</b></div></div><div id="reel-container"></div><div class="opening-footer"><span>✦ ' + series.name + ' / ' + series.items.length + ' 款可收藏</span><span>揭晓后选择折现或收入背包</span></div>', 'opening-dialog');
     await playReel({ container: $('#reel-container'), items: series.items, winnerId: order.itemId,
       seed: order.id + ':' + order.itemId, packMarkup: pack(series, 120), fast: state.settings.fast, reducedMotion: reducedMotion(),
-      onTick: () => sound('tick'), onPhase: phase => {
-        if (phase === 'opening') sound('tear');
+      onTick: () => sound('tick'), onPhase: (phase, timing) => {
+        if (phase === 'opening') {
+          sound('tear');
+          if (state.settings.music && !document.hidden) unboxingMusic.start({ durationMs: timing.durationMs, volume: state.settings.musicVolume });
+        }
         if (phase === 'rolling') sound('swoosh');
         if (phase === 'slowing') sound('slowing');
-        if (phase === 'revealed') { const rarity = getItem(order.itemId).rarity; sound('reveal', { rarity }); speak(rarity); }
+        if (phase === 'revealed') {
+          unboxingMusic.stop(); music.setPaused(document.hidden);
+          const rarity = getItem(order.itemId).rarity; sound('reveal', { rarity });
+        }
       } });
   } catch (error) {
     console.error('Opening presentation failed', error);
     toast('动画暂时中断，已保留订单，正在继续处理。');
   } finally {
-    music.setDucked(Boolean(activeVoice));
+    unboxingMusic.stop(); music.setPaused(document.hidden);
     activePlayer = null;
     busy = false;
     fillQueue();
@@ -453,7 +442,7 @@ function openRules() {
 }
 function openSettings() {
   if (busy || state.pending || blocked) return;
-  showModal('settings', modalHeader('按你的节奏来', '一点小设置，让收藏之旅更合心意。') + `<div class="modal-body"><div class="setting-row"><div><h3>游戏音效</h3><p>拆封、滚动卡点、揭晓音效与品质提示</p></div><button class="toggle ${state.settings.sound ? 'on' : ''}" data-setting="sound">${state.settings.sound ? '已开启' : '已关闭'}</button></div><div class="setting-row"><div><h3>背景音乐</h3><p>原创轻快纯音乐 · 16 小节无缝循环</p></div><button class="toggle ${state.settings.music ? 'on' : ''}" data-setting="music">${state.settings.music ? '已开启' : '已关闭'}</button></div><div class="setting-row"><div><h3>音乐音量</h3><p>开箱滚动时自动压低，切到后台暂停</p></div><label class="music-volume"><input id="music-volume" aria-label="背景音乐音量" type="range" min="0" max="1" step="0.01" value="${state.settings.musicVolume}"/><output id="music-volume-value">${Math.round(state.settings.musicVolume * 100)}%</output></label></div><div class="setting-row"><div><h3>快速开盒</h3><p>缩短选盒拆封和滚动揭晓，也可在动画中直接跳过</p></div><button class="toggle ${state.settings.fast ? 'on' : ''}" data-setting="fast">${state.settings.fast ? '已开启' : '已关闭'}</button></div><div class="setting-row"><div><h3>重新开始</h3><p>清空金币、背包和收藏记录，恢复初始状态</p></div><button class="danger-button" data-action="reset-confirm">重置存档</button></div><p class="version-note">拆播间 · Live Shopping Simulator v0.6.0<br>原创虚构直播间 · 离线单机 · 游戏内虚拟金币<br>${window.desktop ? '桌面存档保存在当前用户的应用数据目录。' : '网页预览存档保存在当前浏览器，与桌面版互相独立。'}</p><h3 style="font-size:12px">最近的收藏足迹</h3><ul class="history-list">${state.history.slice(0, 8).map(entry => `<li>${escape(entry.text)}</li>`).join('') || '<li>故事才刚刚开始。</li>'}</ul></div>`, 'help-dialog');
+  showModal('settings', modalHeader('按你的节奏来', '一点小设置，让收藏之旅更合心意。') + `<div class="modal-body"><div class="setting-row"><div><h3>游戏音效</h3><p>拆封、滚动卡点和揭晓音效</p></div><button class="toggle ${state.settings.sound ? 'on' : ''}" data-setting="sound">${state.settings.sound ? '已开启' : '已关闭'}</button></div><div class="setting-row"><div><h3>背景音乐</h3><p>原创轻快纯音乐 · 16 小节无缝循环</p></div><button class="toggle ${state.settings.music ? 'on' : ''}" data-setting="music">${state.settings.music ? '已开启' : '已关闭'}</button></div><div class="setting-row"><div><h3>音乐音量</h3><p>开箱滚动时自动压低，切到后台暂停</p></div><label class="music-volume"><input id="music-volume" aria-label="背景音乐音量" type="range" min="0" max="1" step="0.01" value="${state.settings.musicVolume}"/><output id="music-volume-value">${Math.round(state.settings.musicVolume * 100)}%</output></label></div><div class="setting-row"><div><h3>快速开盒</h3><p>缩短选盒拆封和滚动揭晓，也可在动画中直接跳过</p></div><button class="toggle ${state.settings.fast ? 'on' : ''}" data-setting="fast">${state.settings.fast ? '已开启' : '已关闭'}</button></div><div class="setting-row"><div><h3>重新开始</h3><p>清空金币、背包和收藏记录，恢复初始状态</p></div><button class="danger-button" data-action="reset-confirm">重置存档</button></div><p class="version-note">拆播间 · Live Shopping Simulator v0.6.1<br>原创虚构直播间 · 离线单机 · 游戏内虚拟金币<br>${window.desktop ? '桌面存档保存在当前用户的应用数据目录。' : '网页预览存档保存在当前浏览器，与桌面版互相独立。'}</p><h3 style="font-size:12px">最近的收藏足迹</h3><ul class="history-list">${state.history.slice(0, 8).map(entry => `<li>${escape(entry.text)}</li>`).join('') || '<li>故事才刚刚开始。</li>'}</ul></div>`, 'help-dialog');
 }
 function addChat(name, message, avatar, self = false) {
   const element = document.createElement('div');
@@ -519,11 +508,11 @@ $('#music-toggle')?.addEventListener('click', async () => {
 document.addEventListener('pointerdown', () => { void music.unlock(); }, { capture: true });
 document.addEventListener('keydown', () => { void music.unlock(); }, { capture: true });
 document.addEventListener('visibilitychange', () => {
-  music.setPaused(document.hidden);
-  if (document.hidden) { stopVoice(); if (audio?.state === 'running') void audio.suspend().catch(() => {}); }
+  music.setPaused(document.hidden || modalKind === 'reel');
+  if (document.hidden) { unboxingMusic.stop(); if (audio?.state === 'running') void audio.suspend().catch(() => {}); }
   else { void music.unlock(); if (audio?.state === 'suspended') void audio.resume().catch(() => {}); }
 });
-window.addEventListener('pagehide', () => { liveRunning = false; liveEpoch++; scene.destroy(); music.destroy(); });
+window.addEventListener('pagehide', () => { liveRunning = false; liveEpoch++; scene.destroy(); unboxingMusic.destroy(); music.destroy(); });
 modal.addEventListener('input', event => { if (event.target.id === 'music-volume') $('#music-volume-value').textContent = `${Math.round(Number(event.target.value) * 100)}%`; });
 modal.addEventListener('change', async event => {
   if (event.target.id !== 'music-volume') return;

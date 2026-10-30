@@ -30,7 +30,8 @@ try {
   const [calls, started] = await page.evaluate(() => [window.voiceCalls, window.voiceStarted]);
   assert.equal(requests.some(url => url.endsWith('/opening.wav')), false, 'removed progress clip is not requested or preloaded');
   assert.equal(calls.some(url => url.endsWith('/opening.wav')), false, 'removed progress clip is never played');
-  assert.equal(calls.filter(url => /\/(common|rare|epic|legendary)\.wav$/.test(url)).length, 1, 'one quality voice after reveal');
-  assert.ok(started.some(url => /\/(common|rare|epic|legendary)\.wav$/.test(url)), 'quality voice playback actually succeeds');
-  console.log('PASS: normal paid opening is silent during progress; no opening.wav request/preload/play; one quality voice successfully plays at reveal.');
+  assert.deepEqual(requests, [], 'speech assets are never requested or preloaded');
+  assert.deepEqual(calls, [], 'reveal also has no speech calls');
+  assert.deepEqual(started, [], 'no speech playback succeeds');
+  console.log('PASS: normal paid opening and reveal have no speech request, preload or playback.');
 } finally { await browser.close(); }
